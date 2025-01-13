@@ -1,0 +1,51 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+#
+# Top level rule's file for SmoothWall Express.
+
+# dpkg-buildpackage -Tclean		# to clean
+# dpkg-buildpackage -us -uc -b	# too make deb
+
+include /usr/share/dpkg/default.mk
+
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-express
+$(info PKG_ROOT=$(PKG_ROOT))
+
+
+clean:
+	@echo -n "    "; tput smso; echo "clean grub";tput rmso
+	rm -rf $(PKG_ROOT)
+
+build:
+	@echo -n "    "; tput smso; echo "build grub";tput rmso
+	@echo $(Time) > Start_Time
+
+binary:
+	dh_testdir
+	dh_testroot
+
+	@echo -n "    "; tput smso;echo "install grub";tput rmso
+	install -v -D debian/grub.cmds $(PKG_ROOT)/boot/grub/grub.cmds-swe
+
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo $(Time) > Finished_Time
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; cat Finished_Time
+
+
+build-arch: build
+binary-arch: binary

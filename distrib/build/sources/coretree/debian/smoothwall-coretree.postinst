@@ -1,0 +1,60 @@
+#!/bin/sh
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+
+# Define message colors.
+export BOUL="\033[1;34m"	    # light blue
+export OOPS="\033[1;31m"    # red
+export DONE="\033[1;32m"    # green
+export INFO="\033[1;33m"    # yellow
+export STEP="\033[1;34m"    # blue
+export WARN="\033[1;35m"    # hot pink
+export LTBL="\033[1;36m"	# light blue
+export NO="\033[0m"         # normal/light
+
+echo; echo "${BOUL}  Postinstall for coretree ${INFO} ${ServerName} ${IP_addr} ${ETH_port}  ${NO}"
+
+	chown -R nobody:nobody /var/smoothwall
+	chown -R nobody:nobody /var/smoothwall-closed
+	chown -R nobody:nobody /var/smoothwall-halfopen
+	chown -R nobody:nobody /var/smoothwall-open
+	chown -R nobody:nobody /var/patches
+	chown -vR 100:100 /var/spool/squid
+	chown -vR 100:100 /var/log/squid
+	chown -vR 101:101 /var/log/snort
+	chown -vR 104:104 /var/log/imspector
+	
+	chown -vR 106:106 /var/lib/siproxd/registrations
+	chown -vR 104:104 /var/lib/imspector
+
+
+
+
+
+
+#if [ ! -f /etc/udev/rules.d/70-Smoothwall-custom-NIC.rules ]; then
+#  echo " \033[1;34m    Creating /etc/udev/rules.d/70-Smoothwall-custom-NIC.rules  \033[0m "
+#  /usr/bin/installer/eth-addr-sort
+#  touch /root/freshinstall
+#else
+#  echo " \033[1;34m    Doing update  \033[0m "
+#  touch /root/update
+#fi
+
+if [ ! -f /etc/udev/rules.d/70-Smoothwall-custom-disk.rules ]; then
+  echo " \033[1;34m    Creating /etc/udev/rules.d/\033[1;32m70-Smoothwall-custom-disk.rules  \033[0m "
+  if [ "$(uname -m)" = aarch64 ]; then 
+    /usr/bin/installer/prepHDudevrule mmcblk0
+  else
+    /usr/bin/installer/prepHDudevrule sda
+  fi
+  cp -v /etc/udev/rules.d/70-Smoothwall-custom-disk.rules /var/smoothwall/custom-disk.rules
+  touch /var/smoothwall/freshinstall
+fi
+
+exit 0 

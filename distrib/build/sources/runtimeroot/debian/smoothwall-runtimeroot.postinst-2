@@ -1,0 +1,7 @@
+#!/bin/sh -e 
+
+echo; echo " \033[1;34m  Postinstall \033[0m "
+
+/usr/bin/installer/addrules
+
+exit 0 

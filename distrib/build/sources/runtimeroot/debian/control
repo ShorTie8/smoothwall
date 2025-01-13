@@ -1,0 +1,17 @@
+Source: smoothwall-runtimeroot
+Maintainer: Neal P. Murphy <neal.p.murphy@alum.wpi.edu>
+Section: net
+Priority: optional
+Standards-Version: 3.9.6
+Build-Depends: debhelper (>=9)
+Homepage: https://community.smoothwall.org/forum/index.php
+
+Package: smoothwall-runtimeroot
+Architecture: any
+Depends: ${misc:Depends}, smoothwall-express
+Recommends:
+Provides: smoothwall-runtimeroot
+Conflicts:
+Replaces: 
+Description: the open-source firewall/filter system's runtimeroot
+ Smoothwall Express is the next evolution of the award-winning multi-zone firewall first released in 2002.

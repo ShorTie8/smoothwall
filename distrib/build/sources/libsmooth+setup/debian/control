@@ -1,0 +1,17 @@
+Source: smoothwall-libsmooth+setup
+Maintainer: Neal P. Murphy <neal.p.murphy@alum.wpi.edu>
+Section: net
+Priority: optional
+Standards-Version: 3.9.6
+Build-Depends: debhelper (>=9), libnewt-dev
+Homepage: https://community.smoothwall.org/forum/index.php
+
+Package: smoothwall-libsmooth+setup
+Architecture: any
+Depends: ${misc:Depends}
+Recommends:
+Provides: smoothwall-libsmooth+setup
+Conflicts:
+Replaces: 
+Description: the open-source firewall/filter systems setup
+ Smoothwall Express is the next evolution of the award-winning multi-zone firewall first released in 2002.

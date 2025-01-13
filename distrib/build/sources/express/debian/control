@@ -1,0 +1,30 @@
+Source: smoothwall-express
+Maintainer: Neal P. Murphy <neal.p.murphy@alum.wpi.edu>
+Section: net
+Priority: optional
+Standards-Version: 3.9.6
+# Ordered SmoothWall, some stuff, kernel, libreswan, snort/daq, httpd
+Build-Depends:
+ debhelper (>=9), dpkg-dev,
+ rsync, libnewt-dev, libxtables-dev, initramfs-tools
+Homepage: https://community.smoothwall.org/forum/index.php
+
+Package: smoothwall-express
+Architecture: any
+# Dead depends: eciadsl*, libart_lgpl, lm_sensors, 
+# LIBS=-lnewt -lslang ?? -ldl -lsmooth
+Depends: ${misc:Depends}
+#, miniupnpd
+# smoothwall-linux,
+# smoothwall-httpd,
+# smoothwall-snort,
+# smoothwall-libreswan,
+# smoothwall-linux,
+# libnewt0.52,
+# libslang2
+Recommends:
+Provides: smoothwall-express
+Conflicts:
+Replaces: 
+Description: the open-source firewall/filter system
+ Smoothwall Express is the next evolution of the award-winning multi-zone firewall first released in 2002.

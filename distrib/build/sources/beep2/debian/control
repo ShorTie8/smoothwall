@@ -1,0 +1,17 @@
+Source: smoothwall-beep2
+Maintainer: Neal P. Murphy <neal.p.murphy@alum.wpi.edu>
+Section: net
+Priority: optional
+Standards-Version: 3.9.6
+Build-Depends: debhelper (>=9), dpkg-dev,
+Homepage: https://community.smoothwall.org/forum/index.php
+
+Package: smoothwall-beep2
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},
+Recommends:
+Provides: smoothwall-smoothd
+Conflicts:
+Replaces: 
+Description: the open-source firewall/filter systems beep2
+ Smoothwall Express is the next evolution of the award-winning multi-zone firewall first released in 2002.

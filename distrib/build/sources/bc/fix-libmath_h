@@ -1,0 +1,5 @@
+sed -i -e '$d' libmath.h
+sed -i -e '1,1s/^/{"/
+1,$s/$/",/
+2,$s/^/"/
+$,$s/,$/,0}/' libmath.h

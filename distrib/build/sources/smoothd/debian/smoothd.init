@@ -1,0 +1,64 @@
+#!/bin/sh
+# smoothd startup and shutdown script
+#
+### BEGIN INIT INFO
+# Provides: smoothd
+# Required-Start: 
+# Required-Stop: 
+# Default-Start: 3
+# Default-Stop: 0 1 6
+# Short-Description: Start SmoothWall Express smoothd at boot time
+# Description: SmoothWall Express smoothd
+### END INIT INFO
+#
+#
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+#
+
+case "${1}" in
+	start)
+		echo " \033[1;34m     Start smoothd \033[0m "
+		PidOf=$(pidof smoothd)
+		if [ "$PidOf" = "" ]; then
+		  echo " \033[1;34m     Starting smoothd \033[0m "
+		  smoothd&
+	      echo -n " \033[1;34m       Pidof smoothd \033[1;33m "
+		  pidof smoothd
+		  echo "\033[0m"
+		else
+		  echo "smoothd already runnin"
+		fi
+		;;
+
+	stop)
+		echo " \033[1;34m     stop smoothd \033[0m "
+		killall -v -9 smoothd
+		;;
+
+	restart)
+		echo " \033[1;34m     restart smoothd \033[0m "
+		#${0} stop&
+		/etc/init.d/smoothd stop
+		echo "Sleepy 6"
+		sleep 6
+		#${0} start
+		/etc/init.d/smoothd start
+		;;
+
+	status)
+	    echo -n " \033[1;34m     Pidof\033[1;32m smoothd \033[1;33m "
+		pidof smoothd
+		echo "\033[0m"
+		;;
+
+	*)
+		echo " \033[1;34m Usage: ${0} \033[1;32m {start|stop|restart|status} \033[0m "
+		exit 1
+		;;
+esac

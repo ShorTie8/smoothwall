@@ -1,0 +1,138 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+#
+# Top level rule's file for SmoothWall Express.
+
+# dpkg-buildpackage -Tclean		# to clean
+# dpkg-buildpackage -us -uc -b	# too make deb
+
+include /usr/share/dpkg/default.mk
+
+mArCH = $(shell uname -m)
+ifeq ($(mArCH), aarch64)
+export mArCH = arm64
+else
+export mArCH = $(shell uname -m)
+endif
+
+#include ../Kernel.conf
+
+Time=$(shell date +%d/%m/%Y%t%H:%M:%S)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-runtimeroot
+export XTABLES_LIBDIR := /usr/include/xtables.h
+export CFLAGS += -fPIC
+export JOBS = -j$(shell grep processor /proc/cpuinfo|wc -l)
+
+$(info PKG_ROOT=$(PKG_ROOT))
+
+#export IPTABLES_SRC_DIR := /usr/src/linux-headers-4.19.0-9-arm64/include/config/ip or ip6/nf/iptables.h
+
+clean:
+	@tput smso;echo; echo "clean runtimeroot";tput rmso
+	#make clean
+	rm -rf tmp
+	rm -rf $(PKG_ROOT)
+
+build:
+	@tput smso;echo; echo "compile";tput rmso
+	@echo $(Time) > Start_Time
+
+	@tput smso;echo; echo "runtimeroot";tput rmso
+	mkdir -vp $(CURDIR)/tmp
+	echo; echo " \033[1;34m  mkinitramfs \033[0m "
+	mkinitramfs -o $(CURDIR)/SmoothallWall.initramfs-$(shell uname -r)
+
+	@echo -n "    "; tput smso; echo "unpack";tput rmso
+	cd tmp; gunzip -c ../SmoothallWall.initramfs-$(shell uname -r) | cpio -id
+
+	@echo -n "    "; tput smso; echo "Add some directories and files";tput rmso
+	mkdir -vp tmp/harddisk
+	mkdir -vp tmp/etc/udev/rules.d
+
+
+	echo " \033[1;34m    Create /etc/udev/rules.d/\033[1;32m70-Smoothwall-custom-disk.rules  \033[0m "
+	mkdir -p $(PKG_ROOT)/etc/udev/rules.d
+	if [ "$(uname -m)" = aarch64 ]; then \
+	  debian/installer/prepHDudevrule mmcblk0 $(PKG_ROOT); \
+	else \
+	  debian/prepHDudevrule sda $(PKG_ROOT); \
+	fi
+	cp -v $(PKG_ROOT)/etc/udev/rules.d/70-Smoothwall-custom-disk.rules $(PKG_ROOT)/var/smoothwall/custom-disk.rules
+	cp -v $(PKG_ROOT)/etc/udev/rules.d/70-Smoothwall-custom-disk.rules tmp/etc/udev/rules.d/70-Smoothwall-custom-disk.rules
+
+
+
+	cp -v /etc/udev/rules.d/70-Smoothwall-custom-disk.rules tmp/etc/udev/rules.d/70-Smoothwall-custom-disk.rules
+	cp -v /var/run/udev/tmp-rules--70-persistent-net.rules tmp/etc/udev/rules.d/70-Smoothwall-custom-NIC.rules
+	cp -R /lib/firmware tmp/lib
+
+#	  cp -avR /lib/ld-*.so /lib/ld-*.so.* /lib/libc-*.so /lib/libc.so.* lib; \
+	@echo -n "    "; tput smso; echo "Setup SmoothWall";tput rmso
+	(cd tmp; \
+	  cp -av  /lib/$(shell uname -m)-linux-gnu/libtinfo.so.5.9 /lib/$(shell uname -m)-linux-gnu; \
+	  cp -av ../etc/fstab etc; \
+	  cp -av ../etc/group etc; \
+	  echo "" >/etc/mtab; \
+	  cp -av ../etc/passwd etc; \
+	  cp -av ../etc/shells etc; \
+	  cp -av ../etc/termcap etc; \
+	  cp -av ../etc/udev-trigger.rc etc; chmod -v 755 etc/udev-trigger.rc; \
+	  cp -av ../etc/halt etc; chmod -v 755 etc/halt; \
+	)
+
+
+	@echo -n "    "; tput smso; echo "Create fstab";tput rmso
+ifeq ($(shell uname -m), x86_64)
+	echo "/dev/harddisk1  /harddisk  ext4  defaults,noatime  0  1" >tmp/etc/fstab
+else ifeq ($(shell uname -m), aarch64)
+	echo "/dev/harddisk2  /harddisk  ext4  defaults,noatime  0  1" >tmp/etc/fstab
+else
+	echo "UnKown arch"; exit 1
+endif
+
+
+
+
+
+
+	@echo -n "    "; tput smso; echo "Copy runtime init";tput rmso
+	cd tmp; mv -v init init-orig
+	cd tmp; cp -v ../etc/runt-init init
+	cd tmp; chmod -v 555 init
+
+	@echo -n "    "; tput smso; echo "re-pack";tput rmso
+	cd tmp; find . | /bin/cpio -o -H newc | gzip > ../runtimeroot.gz
+	
+
+
+
+binary:
+	dh_testdir
+	dh_testroot
+
+	@echo -n "    "; tput smso; echo "Install runtimeroot";tput rmso
+	mkdir -vp $(PKG_ROOT)/boot
+	cd tmp; find . | /bin/cpio -o -H newc | gzip > $(PKG_ROOT)/boot/sweRuntimeroot.gz
+	
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo $(Time) > Finished_Time
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; cat Finished_Time
+
+build-arch: build
+binary-arch: binary
+

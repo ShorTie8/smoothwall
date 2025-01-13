@@ -1,0 +1,11 @@
+Package: smoothwall-grub
+Version: 0.0-1
+Architecture: amd64
+Maintainer: Neal P. Murphy <neal.p.murphy@alum.wpi.edu>
+Installed-Size: 3
+Provides: smoothwall-grub
+Section: net
+Priority: optional
+Homepage: https://community.smoothwall.org/forum/index.php
+Description: the open-source firewall/filter system's grub
+ Smoothwall Express is the next evolution of the award-winning multi-zone firewall first released in 2002.

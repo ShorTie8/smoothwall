@@ -1,0 +1,101 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is $(PKG_ROOT)uted under the terms of the GPL v2.
+
+# cp -v /etc/udev/rules.d/70-Smoothwall-custom-NIC.rules /var/run/udev/tmp-rules--70-persistent-net.rules
+# cat /var/smoothwall/ethernet/settings
+
+include ../Makefile.conf
+
+Time=$(shell date +%m/%d/%Y%t%H:%M:%S)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-coretree
+NOBODY=$(shell grep nobody /etc/group)
+$(info PKG_ROOT=$(PKG_ROOT))
+
+clean:
+	@echo; echo -n "    "; tput smso;echo; echo "clean coretree";tput rmso
+	dh_clean
+
+build:
+	@echo $(Time) > Start_Time
+	@echo "NOBODY is $(NOBODY)"
+ifeq ($(NOBODY),)
+	@echo "    Adding nobody to /etc/group    "
+	groupadd -g 99 nobody
+else
+	@echo "  nobody already in /etc/group    "
+endif
+	@echo; echo -n "    "; tput smso;echo ;echo "install coretree";tput rmso
+	cd coretree; rsync -a . $(PKG_ROOT)
+
+binary:
+	dh_testdir
+	dh_testroot
+
+#	# chown does not seem to work here, moved to postinstall
+
+#	(cd $(PKG_ROOT)/etc/httpd/conf; ln -s /var/smoothwall/main/hostname.conf)
+	(cd $(PKG_ROOT)/usr/etc; ln -s /var/smoothwall/dhcp/dhcpd.conf)
+	(cd $(PKG_ROOT)/usr/etc; ln -s /var/smoothwall/vpn/ipsec.conf)
+	(cd $(PKG_ROOT)/usr/etc; ln -s /var/smoothwall/vpn/ipsec.secrets)
+	(cd $(PKG_ROOT)/etc; ln -s /var/smoothwall/time/localtime)
+	(cd $(PKG_ROOT)/etc; ln -s /var/smoothwall/vpn/ibod.cf)
+#	(cd $(PKG_ROOT)/etc; ln -s /var/smoothwall/hosts/hosts)
+#	# ln: failed to create symbolic link './dhcpd.conf': File exists
+#	#(cd $(PKG_ROOT)/usr/etc; ln -s /var/smoothwall/dhcp/dhcpd.conf)
+	(cd $(PKG_ROOT)/etc/ppp; ln -s /var/smoothwall/ppp/secrets chap-secrets)
+	(cd $(PKG_ROOT)/etc/ppp; ln -s /var/smoothwall/ppp/secrets pap-secrets)
+	(cd $(PKG_ROOT)/etc/ppp; ln -s /var/smoothwall/ppp/ibod.cf)
+	(cd $(PKG_ROOT)/usr/etc; ln -s /var/smoothwall/time/ntpd.conf)
+	(cd $(PKG_ROOT)/usr/etc; ln -s /var/smoothwall/sipproxy/siproxd.conf)
+#	(cd $(PKG_ROOT)/var/run; ln -s /var/clamav/clamd.pid)
+	
+#	# Twerk upnpd.conf template with minupnpd's version.
+#	#@(cd $(PKG_ROOT)/etc; \
+#	#  set `grep "VERSION = " /build/sources/miniupnpd/Makefile`; \
+#	#  VER=$$3; \
+#	#  sed -i -e "s/^SERIAL$$/serial=$$VER/" miniupnpd.conf.template)
+#	(cd $(PKG_ROOT)/var/smoothwall/time; ln -sv /usr/share/zoneinfo/posix/Europe/London localtime)
+	(cd $(PKG_ROOT)/var/smoothwall/time; ln -sv /usr/share/zoneinfo/posix/America/New_York localtime)
+
+	@(cd $(PKG_ROOT); \
+	  ( echo "CURRENT=$(shell uname -r)"; \
+	    echo "KERNEL_VER=$(shell uname -r)"; \
+	    echo "KERNEL_TYPE=$(KERNEL_TYPE)"; \
+	  ) > var/smoothwall/main/kernel; \
+	)
+
+	@(cd $(PKG_ROOT); \
+	  ( echo "PRODUCT=$(PRODUCT_NAME)"; \
+	    echo "VERSION=$(PRODUCT_VERSION)"; \
+	    echo "EXTRA=$(PRODUCT_EXTRA)"; \
+	    echo "REVISION=$(REVISION)"; \
+	    echo "UI_VERSION=$(UI_VERSION)"; \
+	    echo "ARCH=$(DEB_HOST_ARCH)"; \
+	  ) > var/smoothwall/main/productdata; \
+	)
+
+	(cd $(PKG_ROOT); rm -rvf `find -name .gitignore`)
+
+	(cd $(PKG_ROOT)/var/smoothwall/patches; perl -i -pe "s/ARCH/$(DEB_HOST_ARCH)/g;" installed)
+
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; date +%H:%M:%S
+
+build-arch: build
+binary-arch: binary
+

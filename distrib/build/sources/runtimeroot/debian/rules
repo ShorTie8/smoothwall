@@ -1,0 +1,351 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+#
+# Top level rule's file for SmoothWall Express.
+
+
+#KERNEL_VER = $(shell uname -a | grep Debian | cut -d" " -f7 | cut -d"-" -f1)
+
+include ../Makefile.conf
+
+Time=$(shell date +%d/%m/%Y%t%H:%M:%S)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-runtimeroot
+$(info PKG_ROOT=$(PKG_ROOT))
+
+RUNTIME_ROOT = runtimeroot
+BB = /bin/busybox
+BBPROGS = [ [[ ar ash awk basename bbconfig blkid bunzip2 bzcat bzip2 cat \
+	  chattr chgrp chmod chown chroot chvt clear cmp cp cpio cut date dd \
+	  df diff dirname dmesg du echo ed egrep eject env expr false fdisk find \
+	  findfs fsck grep gunzip gzip halt hdparm head ifconfig init insmod ip \
+	  ipcrm ipcs kill killall less ln ls lsattr lsmod mdev microcom \
+	  mkdir mkdosfs mkfifo mkfs.vfat mknod mkswap mktemp modprobe \
+	  more mount mv nohup od patch pipe_progress poweroff ps pwd \
+	  raidautorun rdev reboot reset resize rm rmdir rmmod run-parts \
+	  runlevel sed sh sleep sort start-stop-daemon strings stty su \
+	  swapoff swapon switch_root sync tail tar test time top touch \
+	  true tty umount uname uniq unzip usleep vi wc wget which yes zcat
+
+#SWE_PKGS = busybox eudev kmod pciutils bash util-linux pcmciautils \
+#	   sysfsutils parted readline inotify-tools mtools device-ids kbd kernel-drivers \
+#	   e2fsprogs zlib xz module-init-tools sysvinit libelf linux-firmware $(GRUB)
+
+# Always start with busybox, So we can over write any symlinks made
+# or should it be last so it can't make symlink ??
+SWE_PKGS = busybox \
+		libc6 \
+		  libgcc-s1 libcrypt1 libc-l10n locales libc-bin \
+		klibc-utils libklibc \
+		eudev \
+		  libblkid1 libkmod2 libselinux1 adduser libeudev1 lsb-base util-linux procps \
+			liblzma5 libssl1.1 debconf \
+		  hwdata pci.ids usb.ids \
+		adduser \
+		  passwd \
+			libaudit1 libcrypt1 libpam0g libselinux1 libsemanage1 libpam-modules \
+		util-linux \
+		  libaudit1 libblkid1 libcap-ng0 libcrypt1 libeudev1 libmount1 libpam0g \
+		   libselinux1 libsmartcols1 libtinfo6 libuuid1 zlib1g login lsb-base \
+		procps \
+		  libncurses6 libncursesw6 libprocps8 libtinfo6 lsb-base \
+		sysvinit runit-init sysvinit-core init-system-helpers \
+		  zlib1g libacl1 \
+		perl-base dpkg tar libgcc-s1 gcc-10-base libdb5.3 libnsl2 libtirpc3 libcom-err2 \
+		libtirpc-common \
+		libpcre2-8-0 libpcre2-16-0 libpcre2-32-0 libpcre2-posix2 \
+		bash cpio grep kbd kmod mtools parted pciutils pcmciautils \
+		sysfsutils readline-common libreadline8 inotify-tools libinotifytools0 \
+		e2fsprogs xz-utils libelf1
+		
+	   # linux-firmware $(GRUB)
+
+ifeq ($(DEB_HOST_ARCH), amd64)
+SWE_PKGS += libc6-i386 libc6-x32
+endif
+
+BIN_FILES = bash busybox bzip2 cpio grep kmod udevadm
+
+
+# Stuff that shouldn't be needed in the initramfs net/bridge drivers/gpio
+NOT_DRIVERS = drivers/gpu drivers/parport drivers/scsi/fcoe \
+	      drivers/scsi/fnic drivers/scsi/osd drivers/scsi/libfc \
+	      drivers/scsi/cxgbi drivers/scsi/be2iscsi drivers/scsi/bfa \
+	      drivers/scsi/lpfc drivers/hwmon drivers/media \
+	      drivers/watchdog drivers/edac drivers/cpufreq drivers/regulator \
+	      drivers/video net/netfilter net/ipsec \
+	      net/sched net/sctp net/bluetooth \
+	      net/ax25 net/wimax net/cfrm
+NOT_SHARE = locales/[a-d]* locales/e[o-z]* locales/[e-z]* doc info man readline
+NOT_USR = include info man
+
+
+ROOTDIRS = cdrom dev etc harddisk proc sys tmp usr run
+ROOTDIRS += 
+
+
+clean:
+	@echo -n "      "; echo "clean runtimeroot"
+	dh_clean
+	rm -rf tmp
+	rm -rf $(PKG_ROOT)
+	rm -vf smoothwall.initramfs.gz
+
+
+download:
+	#@echo -n "      "; echo "Download"
+	@echo; echo -n "    "; tput smso; echo "Download SWE_PKGS";tput rmso
+	@if [ ! -d files ]; then mkdir -v files; fi
+	@for i in $(SWE_PKGS); do \
+	  echo $$i; \
+	  if [ ! -f files/$$i.tar.* ]; then \
+		mkdir tmp; cd tmp; \
+		apt-get download $$i 2>/dev/null; \
+		ar x *.deb; \
+		mv -v data.tar.* ../files/$$i.tar.*; \
+		cd ..; rm -rf tmp; \
+	  fi; \
+	done
+
+
+
+build: download
+	@echo $(Time) > Start_Time
+	@echo -n "      "; echo "Create smoothwall.initramfs.gz"
+#	mkinitramfs -k -o $(CURDIR)/initramfs.gz
+
+#	@echo; echo -n "    "; echo "unpack"
+#	mkdir -vp $(CURDIR)/tmp
+#	cd tmp; gunzip -c /boot/initrd.img-5.10.0-9-$(DEB_HOST_ARCH) | cpio -id
+#	cd tmp; zcat /boot/initrd.img-5.10.0-9-$(DEB_HOST_ARCH) | cpio -i —make-directories
+#	cd tmp; zcat /boot/initrd.img-5.10.0-9-$(DEB_HOST_ARCH) | cpio -idmv
+
+	@echo -n "      "; echo "Make root directories"
+	for i in $(ROOTDIRS); do mkdir -vp tmp/$$i; done
+
+	@echo; echo -n "    "; echo "Add some directories"
+	@mkdir -vp tmp/bin
+	@mkdir -vp tmp/boot
+	@mkdir -vp tmp/cdrom
+	@mkdir -vp tmp/dev
+	@mkdir -vp tmp/etc/init.d
+	@mkdir -vp tmp/etc/udev/rules.d
+	@mkdir -vp tmp/harddisk
+	@mkdir -vp tmp/lib/firmware
+	@mkdir -vp tmp/proc
+	@mkdir -vp tmp/root
+	@mkdir -vp tmp/run
+	@mkdir -vp tmp/sbin
+	@mkdir -vp tmp/sys
+	@mkdir -vp tmp/tmp
+	@mkdir -vp tmp/usr/sbin
+	@mkdir -vp tmp/var/lock
+
+#	# Already in
+#	# conf, etc, run, scripts, usr
+#	# bin, lib, sbin are used place anything in /usr/{bin,lib,sbin}
+#	#@mkdir -vp tmp/usr
+#	#@mkdir -vp tmp/run
+
+#	# init makes if there
+#	#@mkdir -vp tmp/dev
+#	#@mkdir -vp tmp/root
+#	#@mkdir -vp tmp/sys
+#	#@mkdir -vp tmp/proc
+#	#@mkdir -vp tmp/tmp
+#	#And mkdir -vp /var/lock
+
+
+	@echo; echo -n "    "; echo "Copy modules"
+#	#@cp -v /lib/ld-linux* tmp/lib
+	@cp -R /lib/modules tmp/lib
+	@cp -vR /lib/*-linux-gnu tmp/lib
+#	@echo; echo -n "  "; echo "Copy lib's"
+#	@echo; echo -n "    "; echo "Copy lib32"
+#	@if [ -d /lib32 ]; then cp -vR /lib32 tmp; fi
+#	@echo; echo -n "    "; echo "Copy lib64"
+#	@if [ -d /lib64 ]; then cp -vR /lib64 tmp; fi
+#	cp -v /etc/udev/rules.d/70-* tmp/etc/udev/rules.d/
+
+
+
+	@echo; echo -n "    "; echo "Extract busybox files"
+	tar xf files/busybox.tar.* -C tmp
+	@cd tmp/bin; for FILE in $(BBPROGS); do ln -s busybox $$FILE; done
+
+	@echo; echo -n "    "; echo "Extract SWE_PKGS files"
+	@for i in $(SWE_PKGS); do \
+	 echo $$i; \
+	 tar xf files/$$i.tar.* -C tmp; \
+	done
+
+	@echo; echo -n "    "; tput smso; echo "Populate /dev";tput rmso
+#	echo -e "${BOUL}    Doing${DONE} Basic${STEP} Mount stuff  ${NO}"
+	@mkdir -vp tmp/dev/mqueue
+	@mkdir -vp tmp/dev/pts
+	@mkdir -vp tmp/dev/shm
+
+#  echo -e "${BOUL}    mknod${DONE} tmp/dev/console${STEP} ${DONE} ${NO}"
+	mknod -m 600 tmp/dev/console c 5 1
+
+#  echo -e "${BOUL}    mknod${DONE} tmp/dev/tty${STEP} ${DONE} ${NO}"
+	mknod -m 666 tmp/dev/tty c 5 0
+
+	  mknod -m 620 tmp/dev/tty0 c 4 1
+	  chown -v root:tty tmp/dev/tty0
+	  mknod -m 620 tmp/dev/tty1 c 4 1
+	  chown -v root:tty tmp/dev/tty1
+	  mknod -m 620 tmp/dev/tty2 c 4 1
+	  chown -v root:tty tmp/dev/tty2
+	  mknod -m 620 tmp/dev/tty3 c 4 1
+	  chown -v root:tty tmp/dev/tty3
+	  mknod -m 620 tmp/dev/tty4 c 4 1
+	  chown -v root:tty tmp/dev/tty4
+#	  mknod -m 620 tmp/dev/tty5 c 4 1
+#	  chown -v root:tty tmp/dev/tty5
+
+#	for i in {0..6}; do \
+#	  mknod -m 620 tmp/dev/tty$$i c 4 1; \
+#	  chown -v root:tty tmp/dev/tty$$i; \
+#	done
+
+ # echo -e "${BOUL}    mknod${DONE} tmp/dev/null${STEP} ${DONE} ${NO}"
+	mknod -m 666 tmp/dev/null c 1 3
+#  echo -e "${BOUL}    mknod${DONE} tmp/dev/kmsg${STEP} ${DONE} ${NO}"
+	mknod -m 660 tmp/dev/kmsg c 1 11
+
+# extra symbolic links not provided by default
+#echo -e "${STEP}\n\n      Makeing${INFO} Extra${STEP} Symbolic Links not provided by Default ${NO}"
+	ln -svn /proc/self/fd tmp/dev/fd
+	ln -svn /proc/self/fd/0 tmp/dev/stdin
+	ln -svn /proc/self/fd/1 tmp/dev/stdout
+	ln -svn /proc/self/fd/2 tmp/dev/stderr
+	ln -svn /proc/kcore tmp/dev/core
+
+
+
+
+#	@echo; echo -n "    "; echo "Copy bin files"
+#	@for i in $(BIN_FILES); do \
+#	 cp -v /bin/$$i tmp/bin; \
+#	done
+
+	@echo; echo -n "    "; echo "Copy udev rules"
+#	cp -R /lib/udev tmp/lib
+	cp -v /etc/udev/rules.d/70-* tmp/etc/udev/rules.d/
+
+#	@echo; echo; echo "klibc"
+#	mkdir -vp tmp/usr/lib/klibc/bin
+#	cp -av /lib/klibc-*.so tmp/lib
+#	cp -av /usr/lib/klibc/bin/nuke tmp/usr/lib/klibc/bin/nuke
+	#cp -avR /usr/lib/klibc/lib tmp/usr/lib/klibc/
+
+	@echo; echo -n "    "; echo "Copy /lib/firmware"
+	@if [ -d /lib/firmware/bnx2 ]; then cp -R /lib/firmware/bnx2 tmp/lib/firmware/; fi
+	@if [ -d /lib/firmware/bnx2x ]; then cp -R /lib/firmware/bnx2x tmp/lib/firmware/; fi
+	@if [ -d /lib/firmware/intel ]; then cp -R /lib/firmware/intel tmp/lib/firmware/; fi
+	@if [ -d /lib/firmware/nvidia ]; then cp -R /lib/firmware/nvidia tmp/lib/firmware/; fi
+	cp -R /lib/firmware/RTL8192E tmp/lib/firmware/
+	cp -R /lib/firmware/rtl_nic tmp/lib/firmware/
+	cp -R /lib/firmware/rtlwifi tmp/lib/firmware/
+
+
+	@echo; echo -n "    "; echo "Copy programs"
+	#cp -av /bin/grep tmp/bin/grep
+	#cp -av /bin/sleep tmp/bin/sleep
+	#cp -av etc/halt tmp/usr/sbin/halt
+
+#	exit 22
+
+#	@(cd tmp; \
+#	  cp -aR ../../../coretree/tree/etc/passwd etc; \
+#	  cp -aR ../../../coretree/tree/etc/group etc; \
+#	  install -D /usr/share/terminfo/l/linux usr/share/terminfo/l/linux; \
+#	  cp -aR /lib/ld-*.so /lib/ld-*.so.* /lib/libc-*.so /lib/libc.so.* lib; \
+#	  cp -aR ../etc/fstab etc; \
+#	  cp -aR ../etc/mtab etc; \
+#	  cp -aR ../etc/shells etc; \
+#	  cp -aR ../etc/termcap etc; \
+#	  cp -aR ../etc/udev-trigger.rc etc; chmod 755 etc/udev-trigger.rc; \
+#	  cp -aR ../etc/halt etc; chmod 755 etc/halt; \
+#	  cp -aR ../etc/modules.conf etc; \
+#	  cp -aR ../etc/storagedevices etc; \
+#	) > /dev/null 2>&1
+
+
+#	# Already in
+#	#cp -av ../etc/fstab etc; \		empty file
+#	#cp -v ../etc/mtab etc; \		is there with /proc/mounts
+#	#  cp -av ../etc/halt etc; chmod -v 755 etc/halt; \
+	@echo; echo -n "    "; echo "Setup SmoothWall"
+	(cd tmp; \
+	  cp -av ../etc/fstab etc; \
+	  cp -av ../etc/mtab etc; \
+	  cp -av ../etc/group etc; \
+	  cp -av ../etc/modules etc; \
+	  cp -av ../etc/passwd etc; \
+	  cp -av ../etc/shells etc; \
+	  cp -av ../etc/termcap etc; \
+	  cp -av ../etc/udev-trigger.rc etc; chmod -v 755 etc/udev-trigger.rc; \
+	)
+
+	@echo; echo -n "    "; echo "Create fstab"
+#ifeq ($(shell uname -m), x86_64)
+#	#UUID=955e45ca-5142-4cc4-89d1-bbae49bf512c       /       ext4    defaults,noatime        0       1
+#	#/swapfile       none    swap    sw      0       0
+	#echo "/dev/harddisk1  /harddisk  ext4  defaults,noatime  0  1" >tmp/etc/fstab
+	#sed '4 i #dtparam=sd_poll_once' config.txt > config.txt.new
+#	cp -v /etc/fstab tmp/etc/fstab
+	#sed -i  tmp/etc/fstab -e 's!/ !/harddisk!'
+#else ifeq ($(shell uname -m), aarch64)
+#	echo "/dev/harddisk2  /harddisk  ext4  defaults,noatime  0  1" >tmp/etc/fstab
+#else
+#	echo "UnKown arch"; exit 1
+#endif
+	cat tmp/etc/fstab
+	#cat tmp/etc/fstab2
+
+	@echo; echo -n "    "; echo "Copy runtime init"
+	cd tmp; cp -v ../etc/runt-init init; chmod -v 555 init
+
+# Clean extra stuff to shrink the initramfs
+	@echo; echo; echo "Clean extra stuff to shrink the initramfs"
+	@for i in tmp/lib/modules/*; do (cd "$$i/kernel"; rm -rf $(NOT_DRIVERS)); done
+	@cd tmp/usr/share; rm -rf $(NOT_SHARE)
+	@cd tmp/usr; rm -rf $(NOT_USR)
+	@cd tmp; find . -name lib\*a -exec rm {} \;
+
+
+
+binary:
+	dh_testdir
+	dh_testroot
+
+	@echo; echo -n "    "; echo "Install runtimeroot"
+#	# Debian don't like you playing in /boot, as it's fat for arm, so use /root for yucks
+	mkdir -vp $(PKG_ROOT)/boot
+	cd tmp; find . | /bin/cpio -o -H newc | gzip > $(PKG_ROOT)/boot/smoothwall.initramfs.gz
+	#@install -v -m 0755 -D debian/addrules $(PKG_ROOT)/usr/bin/installer/addrules
+	ls -l $(PKG_ROOT)/boot/smoothwall.initramfs.gz
+	
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo $(Time) > Finished_Time
+	@echo -n "Start time     "; cat Start_Time
+	@echo -n "Finished time  "; cat Finished_Time
+
+build-arch: build
+binary-arch: binary
+

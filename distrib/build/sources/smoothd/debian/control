@@ -1,0 +1,19 @@
+Source: smoothwall-smoothd
+Maintainer: Neal P. Murphy <neal.p.murphy@alum.wpi.edu>
+Section: net
+Priority: optional
+Standards-Version: 3.9.6
+# Ordered SmoothWall, some stuff, kernel, libreswan, snort/daq, httpd
+Build-Depends:
+ debhelper (>=9), dpkg-dev,
+Homepage: https://community.smoothwall.org/forum/index.php
+
+Package: smoothwall-smoothd
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},
+Recommends:
+Provides: smoothwall-smoothd
+Conflicts:
+Replaces: 
+Description: the open-source firewall/filter system
+ Smoothwall Express is the next evolution of the award-winning multi-zone firewall first released in 2002.

@@ -1,0 +1,24 @@
+This builds a Bunch of debs.
+To install SmoothWall Express on/into Devuan.
+
+# SmoothWall Build system.
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# This code is distributed under the terms of the GPL v2.
+
+
+Valid commands are...
+
+make			# Does a clean, sources and build.
+make build		# Will pick up where it left off, hopefully.
+make clean		# You know...
+make sources	# Gathers up all Makefiles, patches and Debian directories.
+
+Full Install
+
+tools/get_build_depends
+make
+./install-swe.sh
+
+Have A Great Day
+ShorTie

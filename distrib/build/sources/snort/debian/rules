@@ -1,0 +1,165 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+
+# dpkg-buildpackage -Tclean		# to clean
+# dpkg-buildpackage -us -uc -b	# too +$(MAKE) $(JOBS) deb
+
+# Deal with snort: get the latest version number dynamically. :)
+# We do it here because we need the versions 3 times, clean, compile and install.
+
+DAQ_VERSION = 2.0.7
+SNORT_VERSION = 2.9.18.1
+Current_Snort = $(shell debian/get-snort-ver.sh -v snort)
+
+Time=$(shell date +%m/%d/%Y%t%H:%M:%S)
+export JOBS = -j$(shell grep processor /proc/cpuinfo|wc -l)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-snort
+DOWNLOAD_DIR=../downloads
+NOBODY=$(shell grep nobody /etc/group)
+$(info daq = $(DAQ_VERSION)  snort = $(SNORT_VERSION))
+$(info PKG_ROOT=$(PKG_ROOT))
+
+#export DAQ_VERSION = $(shell debian/get-snort-ver.sh -v daq)
+#export DAQ_VERSION = $(shell ./get-snort-ver.sh -v daq)
+#export DAQ_VERSION = $(shell ./get-snort-ver.sh -v daq || $(info Couldn't get DAQ_VERSION!); $(error FAIL))
+
+# DAQ_VERSION = $(shell debian/get-snort-ver.sh -v daq)
+ifeq ( ! $(DAQ_VERSION),)
+	$(shell echo "snort/get-snort-ver.sh cannot get current daq version" >&2)
+	$(error get-snort-ver.sh cannot get current $(PACKAGE) version)
+endif
+
+#export SNORT_VERSION = $(shell ./get-snort-ver.sh -v snort)
+#export SNORT_VERSION = $(shell ./get-snort-ver.sh -v snort || $(info Couldn't get SNORT_VERSION!); $(error FAIL))
+
+# SNORT_VERSION = $(shell debian/get-snort-ver.sh -v snort)
+ifeq ( ! $(SNORT_VERSION),)
+	$(shell echo "get-snort-ver.sh cannot get current snort version" >&2)
+	$(error get-snort-ver.sh cannot get current $(PACKAGE) version)
+endif
+
+
+clean:
+	@echo; echo -n "    "; tput smso; echo "Clean snort";tput rmso
+	rm -rf daq-$(DAQ_VERSION)
+	rm -rf snort-$(SNORT_VERSION)
+	rm -rf debian/smoothwall-snort
+
+download:
+	@echo -n "    "; tput smso; echo "Download daq & snort";tput rmso
+	@echo $(Time) > Start_Time
+
+	@echo "daq = $(DAQ_VERSION)  snort = $(SNORT_VERSION)  current snort $(Current_Snort)"
+	@if [ ! -f $(DOWNLOAD_DIR)/daq-$(DAQ_VERSION).orig.tar.gz ]; then \
+	  wget https://www.snort.org/downloads/snort/daq-$(DAQ_VERSION).tar.gz -O $(DOWNLOAD_DIR)/daq-$(DAQ_VERSION).orig.tar.gz || exit 1; \
+	fi
+	@if [ ! -f $(DOWNLOAD_DIR)/snort-$(SNORT_VERSION).orig.tar.gz ]; then \
+	  wget https://www.snort.org/downloads/snort/snort-$(SNORT_VERSION).tar.gz -O $(DOWNLOAD_DIR)/snort-$(SNORT_VERSION).orig.tar.gz || exit 1; \
+	fi
+
+unpack: download
+	@echo -n "    "; tput smso; echo "Unpack";tput rmso
+	tar xf $(DOWNLOAD_DIR)/daq-$(DAQ_VERSION).orig.tar.gz
+	tar xf $(DOWNLOAD_DIR)/snort-$(SNORT_VERSION).orig.tar.gz
+
+DAQ_CONFIG_OPTS = --disable-bundled-modules --enable-nfq-module \
+	      --enable-pcap-module --enable-dump-module --prefix=/usr
+
+SNORT_CONFIG_OPTS = --enable-gre --enable-targetbased --enable-ppm --enable-sourcefire \
+	      --enable-perfprofiling --enable-zlib --enable-non-ether-decoders --prefix=/usr
+
+build: unpack
+	@echo -n "    "; tput smso; echo "Build";tput rmso
+	@ echo "    compile && install daq"
+	@echo "daq = $(DAQ_VERSION)  snort = $(SNORT_VERSION)"
+	@echo -n "    "; tput smso; echo "autoreconf daq";tput rmso
+	cd daq-$(DAQ_VERSION); autoreconf
+	@echo -n "    "; tput smso; echo "Configure daq";tput rmso
+	cd daq-$(DAQ_VERSION); ./configure $(DAQ_CONFIG_OPTS)
+	@echo -n "    "; tput smso; echo "Compile daq";tput rmso
+#	#scanner.l:70:10: fatal error: tokdefs.h: No such file or directory
+#	#include "tokdefs.h"
+#	So no $(JOBS) for you
+	+$(MAKE) -C daq-$(DAQ_VERSION)
+	@echo -n "    "; tput smso; echo "Install daq into system";tput rmso
+	+$(MAKE) $(JOBS) -C daq-$(DAQ_VERSION) install
+	@echo -n "    "; tput smso; echo "Configure snort";tput rmso
+	cd snort-$(SNORT_VERSION); ./configure $(SNORT_CONFIG_OPTS)
+	@echo -n "    "; tput smso; echo "Compile snort";tput rmso
+	+$(MAKE) $(JOBS) -C snort-$(SNORT_VERSION)
+
+binary:
+	@echo -n "    "; tput smso; echo "Binary build";tput rmso
+	dh_testdir
+	dh_testroot
+
+	@echo; echo "NOBODY is $(NOBODY)"
+ifeq ($(NOBODY),)
+	@echo "    Adding nobody to /etc/group    "
+	groupadd -g 99 nobody
+else
+	@echo "  nobody already in /etc/group    "
+endif
+
+	@echo ;echo "install snort"
+	# Disable problematic rule(s)
+	cd snort-$(SNORT_VERSION)/preproc_rules; sed -i -e 's/\(alert ( msg: "STREAM5_NO_3WHS"; sid: 20; gid: 129\)/#\1/' preprocessor.rules
+	mkdir -vp $(PKG_ROOT)
+	@echo; echo "  Daq install"
+	+$(MAKE) -C daq-$(DAQ_VERSION) DESTDIR=$(PKG_ROOT) install
+	@echo; echo "  Snort install"
+	+$(MAKE) -C snort-$(SNORT_VERSION) DESTDIR=$(PKG_ROOT) install
+
+	@echo; echo "  Snort install others"
+	install -v -D snort-$(SNORT_VERSION)/etc/unicode.map $(PKG_ROOT)/var/smoothwall/snort/unicode.map
+	install -v -D snort-$(SNORT_VERSION)/etc/classification.config $(PKG_ROOT)/var/smoothwall/snort/classification.config
+	install -v -D snort-$(SNORT_VERSION)/etc/reference.config $(PKG_ROOT)/var/smoothwall/reference.config
+	install -v -D snort-$(SNORT_VERSION)/preproc_rules/preprocessor.rules $(PKG_ROOT)/var/smoothwall/snort/preproc_rules/preprocessor.rules
+	install -v -D snort-$(SNORT_VERSION)/preproc_rules/decoder.rules $(PKG_ROOT)/var/smoothwall/snort/preproc_rules/decoder.rules
+
+	mkdir -vp $(PKG_ROOT)/var/smoothwall/snort/rules/
+	mkdir -vp $(PKG_ROOT)/var/smoothwall/snort/preproc_rules/
+	mkdir -vp $(PKG_ROOT)/var/smoothwall/snort/so_rules/
+	mkdir -vp $(PKG_ROOT)/var/smoothwall/snort/reputation_lists/
+
+	touch $(PKG_ROOT)/var/smoothwall/snort/rules/local.rules
+	touch $(PKG_ROOT)/var/smoothwall/snort/rules/deleted.rules
+	touch $(PKG_ROOT)/var/smoothwall/snort/reputation_lists/black.list
+	touch $(PKG_ROOT)/var/smoothwall/snort/reputation_lists/white.list
+
+	@chown nobody:nobody -R $(PKG_ROOT)/var/smoothwall/
+	mkdir -vp $(PKG_ROOT)/usr/lib/smoothwall
+	echo $(SNORT_VERSION) > $(PKG_ROOT)/usr/lib/smoothwall/snortversion
+	SNORT_OPTS=`echo -n "$(SNORT_CONFIG_OPTS)" | sed -e 's/ +/ /'`; \
+	  sed -i -e '/OPTIONS :/s@:.*$$@: '"$$SNORT_OPTS@" \
+	      -e '/OPTIONS :/a #     SWE built : snort-$(SNORT_VERSION)' \
+	      snort-$(SNORT_VERSION)/etc/snort.conf
+	sed -f debian/snort.conf.sed < snort-$(SNORT_VERSION)/etc/snort.conf > snort-$(SNORT_VERSION)/etc/snort.conf-new
+	install -v -D snort-$(SNORT_VERSION)/etc/snort.conf-new $(PKG_ROOT)/etc/snort.conf
+	chown -v -R root:root $(PKG_ROOT)/etc
+	chmod -R 755 $(PKG_ROOT)/etc
+	chmod -v -R 644 $(PKG_ROOT)/etc/snort.conf
+	cp -v debian/snort.init.d /etc/init.d/snort
+
+
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; date +%H:%M:%S
+
+build-arch: build
+binary-arch: binary
+

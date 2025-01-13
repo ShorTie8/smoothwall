@@ -1,0 +1,115 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+#
+# Top level rule's file for SmoothWall Express.
+
+# dpkg-buildpackage -Tclean		# to clean
+# dpkg-buildpackage -us -uc -b	# too make deb
+
+include /usr/share/dpkg/default.mk
+
+include ../Makefile.conf
+
+#include ../Kernel.conf
+
+Time=$(shell date +%m/%d/%Y%t%H:%M:%S)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-smoothd
+export XTABLES_LIBDIR := /usr/include/xtables.h
+# added -std=gnu99 to fix like
+# UDSocket.hpp:52:41: warning: dynamic exception specifications are deprecated in C++11 [-Wdeprecated]
+# But, cc1plus: warning: command line option ‘-std=gnu99’ is valid for C/ObjC but not for C++, Blaaa...
+#export CFLAGS += -fPIC
+#export CXXFLAGS += -std=gnu99
+export JOBS = -j$(shell grep processor /proc/cpuinfo|wc -l)
+
+$(info PKG_ROOT=$(PKG_ROOT))
+
+#export IPTABLES_SRC_DIR := /usr/src/linux-headers-4.19.0-9-arm64/include/config/ip or ip6/nf/iptables.h
+
+clean:
+	@echo -n "    "; tput smso; echo "clean smoothd";tput rmso
+	make -C smoothd clean
+	rm -rf $(PKG_ROOT)
+	rm -rf debian/.debhelper
+
+build:
+	@echo $(Time) > Start_Time
+	@echo -n "    "; tput smso; echo "Compile smoothd";tput rmso
+	#install -v -D debian/smoothd.ld.so.conf.d.conf /etc/ld.so.conf.d/smoothd.conf
+	make -C smoothd all
+
+binary:
+	dh_testdir
+	dh_testroot
+
+	@echo -n "    "; tput smso; echo "Install smoothd";tput rmso
+	install -v -D smoothd/libsmoothd.so $(PKG_ROOT)/usr/lib/libsmoothd.so
+	install -v -D smoothd/smoothd $(PKG_ROOT)/usr/sbin/smoothd 
+	install -v -D smoothd/default $(PKG_ROOT)/usr/lib/smoothd/sockets/default 
+	
+	install -v -D smoothd/module.h $(PKG_ROOT)/usr/include/smoothwall/module.h
+	install -v -D smoothd/setuid.h $(PKG_ROOT)/usr/include/smoothwall/setuid.h
+	install -v -D smoothd/config.h $(PKG_ROOT)/usr/include/smoothwall/config.h
+	install -v -D smoothd/smoothcom $(PKG_ROOT)/usr/bin/smoothcom 
+	install -v -D smoothd/smoothd.pm $(PKG_ROOT)/usr/lib/smoothwall/smoothd.pm
+	
+	install -v -D smoothd/sysadvnet.so $(PKG_ROOT)/usr/lib/smoothd/sysadvnet.so 
+	install -v -D smoothd/sysapcupsd.so $(PKG_ROOT)/usr/lib/smoothd/sysapcupsd.so 
+	install -v -D smoothd/sysclamav.so $(PKG_ROOT)/usr/lib/smoothd/sysclamav.so 
+	install -v -D smoothd/sysdhcpd.so $(PKG_ROOT)/usr/lib/smoothd/sysdhcpd.so 
+	install -v -D smoothd/sysdnsproxy.so $(PKG_ROOT)/usr/lib/smoothd/sysdnsproxy.so 
+	install -v -D smoothd/sysim.so $(PKG_ROOT)/usr/lib/smoothd/sysim.so 
+	install -v -D smoothd/sysinstall.so $(PKG_ROOT)/usr/lib/smoothd/sysinstall.so 
+	install -v -D smoothd/sysipblock.so $(PKG_ROOT)/usr/lib/smoothd/sysipblock.so 
+	install -v -D smoothd/sysipsec.so $(PKG_ROOT)/usr/lib/smoothd/sysipsec.so 
+	install -v -D smoothd/sysiptables.so $(PKG_ROOT)/usr/lib/smoothd/sysiptables.so 
+	install -v -D smoothd/sysiptables.so $(PKG_ROOT)/usr/lib/smoothd/sysiptables.so 
+	install -v -D smoothd/sysntpd.so $(PKG_ROOT)/usr/lib/smoothd/sysntpd.so 
+	install -v -D smoothd/sysp3scan.so $(PKG_ROOT)/usr/lib/smoothd/sysp3scan.so 
+	install -v -D smoothd/sysrestore.so $(PKG_ROOT)/usr/lib/smoothd/sysrestore.so 
+	install -v -D smoothd/sysshutdown.so $(PKG_ROOT)/usr/lib/smoothd/sysshutdown.so 
+	install -v -D smoothd/syssip.so $(PKG_ROOT)/usr/lib/smoothd/syssip.so 
+	install -v -D smoothd/syssmoothinfo.so $(PKG_ROOT)/usr/lib/smoothd/syssmoothinfo.so 
+	install -v -D smoothd/syssnort.so $(PKG_ROOT)/usr/lib/smoothd/syssnort.so 
+	install -v -D smoothd/syssquid.so $(PKG_ROOT)/usr/lib/smoothd/syssquid.so 
+	install -v -D smoothd/syssquidguard.so $(PKG_ROOT)/usr/lib/smoothd/syssquidguard.so
+	install -v -D smoothd/syssshd.so $(PKG_ROOT)/usr/lib/smoothd/syssshd.so 
+	install -v -D smoothd/systimedaccess.so $(PKG_ROOT)/usr/lib/smoothd/systimedaccess.so 
+	install -v -D smoothd/systimeset.so $(PKG_ROOT)/usr/lib/smoothd/systimeset.so 
+	install -v -D smoothd/systraffic.so $(PKG_ROOT)/usr/lib/smoothd/systraffic.so 
+	install -v -D smoothd/sysupdown.so $(PKG_ROOT)/usr/lib/smoothd/sysupdown.so 
+	install -v -D smoothd/sysupnpd.so $(PKG_ROOT)/usr/lib/smoothd/sysupnpd.so 
+	install -v -D smoothd/sysxtaccess.so $(PKG_ROOT)/usr/lib/smoothd/sysxtaccess.so 
+	install -v -D smoothd/sysGAR.so $(PKG_ROOT)/usr/lib/smoothd/sysGAR.so
+
+# In libsmooth
+#	@echo -n "    "; tput smso; echo "Install ld.so.conf.d/smoothd.conf";tput rmso
+#	mkdir -vp $(PKG_ROOT)/etc/ld.so.conf.d
+#	install -v -D debian/smoothd.ld.so.conf.d.conf $(PKG_ROOT)/etc/ld.so.conf.d/smoothd.conf
+	
+	@echo -n "    "; tput smso; echo "Install smoothd init, /etc/init.d/smoothd";tput rmso
+	mkdir -vp $(PKG_ROOT)/etc/init.d
+	install -v -D debian/smoothd.init $(PKG_ROOT)/etc/init.d/smoothd
+	
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; date +%H:%M:%S
+	touch Full-Build.done
+
+build-arch: build
+binary-arch: binary
+

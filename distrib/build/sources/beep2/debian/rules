@@ -1,0 +1,67 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+#
+# Top level rule's file for SmoothWall Express.
+
+# dpkg-buildpackage -Tclean		# to clean
+# dpkg-buildpackage -us -uc -b	# too make deb
+
+include /usr/share/dpkg/default.mk
+
+mArCH = $(shell uname -m)
+ifeq ($(mArCH), aarch64)
+export mArCH = arm64
+else
+export mArCH = $(shell uname -m)
+endif
+
+#include ../Kernel.conf
+
+Time=$(shell date +%m/%d/%Y%t%H:%M:%S)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-beep2
+export XTABLES_LIBDIR := /usr/include/xtables.h
+export CFLAGS += -fPIC
+export JOBS = -j$(shell grep processor /proc/cpuinfo|wc -l)
+
+$(info PKG_ROOT=$(PKG_ROOT))
+
+#export IPTABLES_SRC_DIR := /usr/src/linux-headers-4.19.0-9-arm64/include/config/ip or ip6/nf/iptables.h
+
+clean:
+	@tput smso;echo; echo "clean beep2";tput rmso
+	make -C beep2-1.2a clean
+	rm -rf $(PKG_ROOT)
+
+build:
+	@tput smso;echo; echo "compile beep2-1.2a";tput rmso
+	@echo $(Time) > Start_Time
+	make -C beep2-1.2a all
+
+binary:
+	dh_testdir
+	dh_testroot
+
+	@tput smso;echo ;echo "install beep2-1.2a";tput rmso
+	make -C beep2-1.2a DESTDIR=$(PKG_ROOT) PREFIX=/usr install
+	
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; date +%H:%M:%S
+
+build-arch: build
+binary-arch: binary
+

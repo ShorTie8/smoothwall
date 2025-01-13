@@ -1,0 +1,164 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+
+# dpkg-buildpackage -Tclean		# to clean
+# dpkg-buildpackage -us -uc -b	# too make deb
+
+include ../Makefile.conf
+
+PACKAGE = httpd
+version = 2.4.43
+APR_VER = 1.7.0
+APR_UTIL_VER = 1.6.1
+LICENCE_FILE = $(DIR)/COPYING
+
+Time=$(shell date +%m/%d/%Y%t%H:%M:%S)
+export JOBS = -j$(shell grep processor /proc/cpuinfo|wc -l)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-httpd
+DOWNLOAD_DIR=../downloads
+$(info PKG_ROOT=$(PKG_ROOT))
+
+CPPFLAGS = -DLINUX -D_REENTRANT -D_GNU_SOURCE
+
+CONFIG_OPTS += --with-openssl --with-crypto --enable-static-support \
+	--with-included-apr --enable-mods-shared=all --enable-layout=RedHat \
+	--enable-cgi \
+	--enable-imagemap \
+	--enable-ident \
+	--enable-cern_meta \
+	--enable-unixd \
+	--enable-mpms-shared=all \
+	--enable-prefork \
+	--enable-proxy \
+	--enable-mutex \
+	--enable-slotmem_shm
+
+# needs -lz, zlib
+#	--enable-proxy_html
+
+# configure: error: MPM yes is not supported on this platform.
+#	--with-mpm \
+#	--enable-mpms-shared \
+#	--disable-cgid \
+
+#CONFIG_OPTS += --enable-ssl --with-ssl=/usr \
+#	--with-included-apr --enable-mods-shared=all --enable-layout=RedHat \
+#	--enable-mods-shared=all --enable-load-all-modules
+
+
+clean:
+	@echo; echo -n "    "; tput smso; echo "Clean httpd";tput rmso
+	dh_clean
+	rm -rf httpd-$(version)
+	rm -rf $(PKG_ROOT)
+
+download:
+	@echo; echo -n "    "; tput smso; echo "Download apr, apr-util && httpd";tput rmso
+	@echo $(Time) > Start_Time
+	@ echo "  Checking for httpd-$(version).orig.tar.gz"
+	@if [ ! -f $(DOWNLOAD_DIR)/httpd-$(version).orig.tar.gz ]; then \
+	  wget http://archive.apache.org/dist/httpd/httpd-$(version).tar.gz -O $(DOWNLOAD_DIR)/httpd-$(version).orig.tar.gz || exit 1; \
+	else \
+	  echo "    already got it"; \
+	fi
+	@ echo "  Checking for apr-$(APR_VER).orig.tar.gz"
+	@if [ ! -f $(DOWNLOAD_DIR)/apr-$(APR_VER).orig.tar.gz ]; then \
+	  wget http://archive.apache.org/dist/apr/apr-$(APR_VER).tar.gz -O $(DOWNLOAD_DIR)/apr-$(APR_VER).orig.tar.gz || exit 1; \
+	else \
+	  echo "    already got it"; \
+	fi
+	@ echo "  Checking for apr-util-$(APR_UTIL_VER).orig.tar.gz"
+	@if [ ! -f $(DOWNLOAD_DIR)/apr-util-$(APR_UTIL_VER).orig.tar.gz ]; then \
+	  wget http://archive.apache.org/dist/apr/apr-util-$(APR_UTIL_VER).tar.gz -O $(DOWNLOAD_DIR)/apr-util-$(APR_UTIL_VER).orig.tar.gz || exit 1; \
+	else \
+	  echo "    already got it"; \
+	fi
+
+
+unpack: download
+	@echo; echo -n "    "; tput smso; echo "Unpack httpd";tput rmso
+	tar xf $(DOWNLOAD_DIR)/httpd-$(version).orig.tar.gz
+	tar xf $(DOWNLOAD_DIR)/apr-$(APR_VER).orig.tar.gz -C httpd-$(version)/srclib
+	tar xf $(DOWNLOAD_DIR)/apr-util-$(APR_UTIL_VER).orig.tar.gz -C httpd-$(version)/srclib
+	cd httpd-$(version)/srclib; mv -v apr-$(APR_VER) apr; mv -v apr-util-$(APR_UTIL_VER) apr-util
+
+#CONFIG_OPTS = --prefix=/usr --enable-ssl --with-ssl=/usr --with-crypto \
+
+configure: unpack
+	@echo; echo -n "    "; tput smso; echo "Configure httpd";tput rmso
+	cd httpd-$(version); CXXFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)" CFLAGS="$(CFLAGS)" ./configure $(CONFIG_OPTS)
+
+compile: configure
+	@echo; echo -n "    "; tput smso; echo "Compile httpd";tput rmso
+	$(MAKE) $(JOBS) -C httpd-$(version)
+
+build: compile
+	@tput smso;echo; echo "build/compile";tput rmso
+
+
+binary:
+	dh_testdir
+	dh_testroot
+
+	@echo; echo -n "    "; tput smso; echo "Install httpd";tput rmso
+	$(MAKE) $(JOBS) -C httpd-$(version) DESTDIR=$(PKG_ROOT) install
+
+#	# htcacheclean.init  httpd.init  httpd.logrotate  httpd.spec.in
+	@echo; echo -n "    "; tput smso; echo "Install httpd's init script's";tput rmso
+	mkdir -vp $(PKG_ROOT)/etc/init.d
+	@install -v -m 0775 debian/httpd.init $(PKG_ROOT)/etc/init.d/httpd
+	@install -v -m 0775 debian/htcacheclean.init $(PKG_ROOT)/etc/init.d/htcacheclean
+
+	@echo; echo -n "    "; tput smso; echo "Copy httpd.conf";tput rmso
+	cp -v debian/httpd.conf $(PKG_ROOT)/etc/httpd/conf/httpd.conf
+
+	@echo; echo -n "    "; tput smso; echo "Copy extra";tput rmso
+	mv -v $(PKG_ROOT)/etc/httpd/conf/extra $(PKG_ROOT)/etc/httpd/conf/extra.orig
+	mkdir -v $(PKG_ROOT)/etc/httpd/conf/extra
+	install -v debian/extra/* $(PKG_ROOT)/etc/httpd/conf/extra/
+	#cp -v debian/httpd.conf $(PKG_ROOT)/etc/httpd/conf/extra
+
+
+	@echo; echo -n "    "; tput smso; echo "Making hostname.conf symlink";tput rmso
+	cd $(PKG_ROOT)/etc/httpd/conf; ln -s /var/smoothwall/main/hostname.conf hostname.conf
+
+
+#	@install -v -m 0775 debian/httpd.logrotate $(PKG_ROOT)/etc/httpd
+#	@install -v debian/httpd.spec.in $(PKG_ROOT)/etc/httpd
+
+#	@echo; echo -n "    "; tput smso; echo "Move httpd";tput rmso
+#	ls -l $(PKG_ROOT)/etc/http*
+	#cd $(PKG_ROOT)/etc; mv -v httpd httpd-build.conf
+#	#mv -v $(PKG_ROOT)/etc/httpd $(PKG_ROOT)/etc/httpd-build.conf
+#	#mkdir -vp $(PKG_ROOT)/etc/httpd
+#	#@mv -v $(PKG_ROOT)/etc/httpd $(PKG_ROOT)/etc/httpd/httpd-build.conf
+
+#	@echo; echo -n "    "; tput smso; echo "Cleanout PKG_ROOT/etc/httpd/conf ";tput rmso
+#	mv -v $(PKG_ROOT)/etc/httpd/conf/httpd.conf $(PKG_ROOT)/etc/httpd/conf/httpd.conf-httpd.orig
+#	rm -rv $(PKG_ROOT)/etc/httpd/conf/original
+
+#	@echo; echo -n "    "; tput smso; echo "Move /var/www";tput rmso
+#	@mv -v $(PKG_ROOT)/var/www $(PKG_ROOT)/var/www-httpd
+
+
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; date +%H:%M:%S
+
+build-arch: build
+binary-arch: binary
+

@@ -1,0 +1,12 @@
+#!/bin/sh -e 
+
+echo; echo " \033[1;34m  Preinstall for \033[1;33m smoothd \033[0m "
+echo -n "     Checking for pidof smoothd,   "
+if [ "$(pidof smoothd)" = "" ]; then
+  echo "       smoothd not runnin"
+else
+  echo "       killing smoothd"
+  killall -v smoothd
+fi
+
+exit 0 

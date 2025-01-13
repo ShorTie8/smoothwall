@@ -1,0 +1,28 @@
+#!/bin/sh -e 
+
+echo; echo " \033[1;34m  Preinstall for \033[1;33m express \033[0m "
+
+echo " \033[1;34m    Checking for rc.local.orig.backup \033[0m "
+if [ ! -f /etc/init.d/rc.local.orig.backup ]; then
+  echo "      Create rc.local.orig.backup"
+  cp -v /etc/init.d/rc.local /etc/init.d/rc.local.orig.backup
+else
+  echo "       Backup already there"
+fi
+
+
+echo " \033[1;34m    Backup /etc/host \033[0m "
+# readlink /etc/hosts != /var/smoothwall/hosts/hosts
+mkdir -vp /var/smoothwall/hosts
+if [ ! -f /var/smoothwall/hosts/etc-hosts.backup ]; then
+  cp -v /etc/hosts /var/smoothwall/hosts/etc-hosts.backup
+fi
+if [ ! -f /var/smoothwall/hosts/hosts.1 ]; then
+  cp -v /etc/hosts /var/smoothwall/hosts/hosts.1
+fi
+#mv -v /etc/hosts /var/smoothwall/hosts/hosts
+
+#echo " \033[1;34m    Removing  /boot/config.txt-swe-pi4 \033[0m "
+#rm -vf /boot/config.txt-swe-pi4
+
+exit 0 

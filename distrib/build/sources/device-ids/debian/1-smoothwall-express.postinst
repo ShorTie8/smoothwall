@@ -1,0 +1,42 @@
+#!/bin/sh -e 
+
+echo; echo " \033[1;34m  Postinstall \033[0m "
+
+Kern=$(uname -r)
+echo $Kern > /var/smoothwall/main/kernel
+echo -n "  Using kernel  "; cat /var/smoothwall/main/kernel
+
+#mv -v /etc/crontab-smoothwall /etc/crontab.orig
+#echo "/usr/lib/smoothd" >> /etc/ld.so.conf
+cp -v /etc-smoothwall/ld.so.conf.d/smoothd.conf /etc/ld.so.conf.d/smoothd.conf
+#cp -v /run/udev/tmp-rules--70-persistent-net.rules /var/smoothwall/eudev.nics
+
+if ! grep nobody /etc/group; then
+  echo "nobody:x:99:" >> /etc/group
+  echo -n "    Added nobody to /etc/group    "
+fi
+grep 'nobody' /etc/group
+
+
+if [ ! -f /etc/udev/rules.d/70-Smoothwall-custom-disk.rules ]; then
+  echo "  Creating 70-Smoothwall-custom-disk.rules"
+  if grep mmcblk0 /etc/mtab; then
+    device="mmcblk0"
+  else
+    device="sda"
+  fi
+  /usr/bin/installer/prepudevrules mmcblk0
+fi
+
+
+if [ ! -d /root/tmp ]; then
+  mkdir -v /root/tmp
+fi
+
+echo; echo " \033[1;34m  mkinitramfs \033[0m "
+mkinitramfs -k -o ~/tmp/SmoothallWall.initramfs-$(uname -r)
+
+echo; echo " \033[1;34m  adjustinitrd \033[0m "
+/usr/bin/installer/adjustinitrd
+
+exit 0 

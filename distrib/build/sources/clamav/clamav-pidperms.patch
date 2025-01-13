@@ -1,0 +1,11 @@
+--- clamav-0.102.0/clamd/server-th.c.orig	2019-12-13 18:18:12.365573710 -0500
++++ clamav-0.102.0/clamd/server-th.c	2019-12-13 18:18:54.593452680 -0500
+@@ -1171,7 +1171,7 @@
+     mainpid = getpid();
+     if ((opt = optget(opts, "PidFile"))->enabled) {
+         FILE *fd;
+-        old_umask = umask(0002);
++        old_umask = umask(0022);
+         if ((fd = fopen(opt->strarg, "w")) == NULL) {
+             logg("!Can't save PID in file %s\n", opt->strarg);
+         } else {

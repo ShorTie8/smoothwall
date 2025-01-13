@@ -1,0 +1,32 @@
+Source: smoothwall-httpd
+Maintainer: Neal P. Murphy <neal.p.murphy@alum.wpi.edu>
+Section: net
+Priority: optional
+Standards-Version: 3.9.6
+# Ordered SmoothWall, some stuff, kernel, libreswan, snort/daq, httpd
+Build-Depends:
+ debhelper (>=9), dpkg-dev,
+ rsync,
+ libnewt-dev,
+ libxtables-dev,
+ libexpat1-dev,
+ liblua5.3-dev,
+ libnghttp2-dev,
+ lua-http
+Homepage: https://community.smoothwall.org/forum/index.php
+
+Package: smoothwall-httpd
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},
+ perl,
+ expat,
+ liblua5.3-0,
+ libnghttp2-14,
+ lua-http,
+ libpcre++0v5
+Recommends:
+Provides: httpd
+Conflicts:
+Replaces:
+Description: the open-source firewall/filter system
+ Smoothwall Express is the next evolution of the award-winning multi-zone firewall first released in 2002.

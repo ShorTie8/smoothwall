@@ -1,0 +1,47 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is $(PKG_ROOT)uted under the terms of the GPL v2.
+
+include ../Makefile.conf
+
+Time=$(shell date +%m/%d/%Y%t%H:%M:%S)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-express
+NOBODY=$(shell grep nobody /etc/group)
+$(info PKG_ROOT=$(PKG_ROOT))
+
+clean:
+	@echo; echo -n "    "; tput smso;echo; echo "clean express";tput rmso
+	dh_clean
+
+build:
+	@echo $(Time) > Start_Time
+	@echo; echo -n "    "; tput smso;echo ;echo "Build express";tput rmso
+	cd express; rsync -a . $(PKG_ROOT)
+
+binary:
+	dh_testdir
+	dh_testroot
+
+	@echo; echo -n "    "; tput smso;echo ;echo "install express";tput rmso
+	(cd $(PKG_ROOT); rm -rvf `find -name .gitignore`)
+
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; date +%H:%M:%S
+
+build-arch: build
+binary-arch: binary
+

@@ -1,0 +1,113 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeffrey R. Blanner 2020-2021
+#
+# This code is distributed under the terms of the GPL v2.
+#
+# Top level rule's file for SmoothWall Express.
+
+# dpkg-buildpackage -Tclean		# to clean
+# dpkg-buildpackage -us -uc -b	# too make deb
+
+include /usr/share/dpkg/default.mk
+#include ../Makefile.conf
+
+Time=$(shell date +%d/%m/%Y%t%H:%M:%S)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-trafficstats
+#export XTABLES_LIBDIR := /usr/include/xtables.h
+#export JOBS = -j$(shell grep processor /proc/cpuinfo|wc -l)
+
+$(info PKG_ROOT=$(PKG_ROOT))
+
+#	@$(MAKE) $(JOBS) -C $(COMPILE_DIR) CFLAGS="$(CFLAGS)" XTA_VER=$(XTABLES_ADDONS_VER) \
+#	  MODSWROOT=$(MODSWROOT) KERNEL_VER=$(KERNEL_VER) \
+#	  IPTABLES_VERSION=$(IPTABLES_VER) LIB_IPT_DIR=$(IPT_LIBEXEC)
+
+export CFLAGS += -fPIC
+COMPILE_DIR = trafficstats
+MODSWROOT = /var/smoothwall/traffic
+KERNEL_VER = 
+IPROUTE2_VER = $(shell dpkg -s iproute2 | grep -i '^Version' | cut -d' ' -f2 | cut -d'-' -f1)
+IPTABLES_VER = $(shell dpkg -s iptables | grep -i '^Version' | cut -d' ' -f2 | cut -d'-' -f1)
+XTABLES_ADDONS_VER = $(shell dpkg -s xtables-addons-common | grep -i '^Version' | cut -d' ' -f2 | cut -d'-' -f1)
+XTABLE_ADDONS_SRC_DIR = $(ROOT_DIR)/trafficstats/xtables-addons-$(XTABLES_ADDONS_VER)
+IPT_LIBEXEC := /usr/libexec/xtables
+ACCOUNT_INC_DIR = $(XTABLE_ADDONS_SRC_DIR)/extensions/ACCOUNT
+
+#IPROUTE2_SRC_DIR = $(ROOT_DIR)/trafficstats/iproute2-$(IPROUTE2_VER)
+#IPROUTE_INC_DIR = $(IPROUTE2_SRC_DIR)/include
+#IPROUTE_LIB_DIR = $(IPROUTE2_SRC_DIR)/lib
+
+
+#export IPTABLES_SRC_DIR := /usr/src/linux-headers-4.19.0-9-arm64/include/config/ip or ip6/nf/iptables.h
+
+clean:
+	@echo -n "    "; tput smso; echo "Clean trafficstats";tput rmso
+	dh_clean
+	make -C trafficstats clean
+	rm -rf $(PKG_ROOT)
+	rm -rf iproute2-$(IPROUTE2_VER)
+	rm -vf pax_global_header
+	rm -rf xtables-addons-$(XTABLES_ADDONS_VER)
+
+download:
+	@echo $(Time) > Start_Time
+	@echo; echo -n "    "; tput smso; echo "Checking for iproute2 $(IPROUTE2_VER).orig";tput rmso
+	@if [ ! -f $(DOWNLOAD_DIR)/iproute2_$(IPROUTE2_VER).orig.tar.xz ]; then \
+	  echo; echo -n "      "; tput smso; echo "Downloading iproute2";tput rmso; \
+	  wget http://deb.debian.org/debian/pool/main/i/iproute2/iproute2_$(IPROUTE2_VER).orig.tar.xz -O $(DOWNLOAD_DIR)/iproute2_$(IPROUTE2_VER).orig.tar.xz || exit 1; \
+	else \
+	  echo "      already got it"; \
+	fi
+
+	@echo; echo -n "    "; tput smso; echo "Checking for xtables-addons $(XTABLES_ADDONS_VER).orig";tput rmso
+	@if [ ! -f $(DOWNLOAD_DIR)/xtables-addons_$(XTABLES_ADDONS_VER).orig.tar.xz ]; then \
+	  echo; echo -n "      "; tput smso; echo "Downloading iproute2";tput rmso; \
+	  wget http://deb.debian.org/debian/pool/main/x/xtables-addons/xtables-addons_$(XTABLES_ADDONS_VER).orig.tar.xz -O $(DOWNLOAD_DIR)/xtables-addons_$(XTABLES_ADDONS_VER).orig.tar.xz || exit 1; \
+	else \
+	  echo "      already got it"; \
+	fi
+
+unpack: download
+	@echo; echo -n "    "; tput smso; echo "Unpack iproute2 && xtables-addons";tput rmso
+	tar xf $(DOWNLOAD_DIR)/iproute2_$(IPROUTE2_VER).orig.tar.xz
+	tar xf $(DOWNLOAD_DIR)/xtables-addons_$(XTABLES_ADDONS_VER).orig.tar.xz
+
+build: unpack
+	env > env.txt
+	@echo -n "    "; tput smso; echo "Compile trafficstats";tput rmso
+	#make compile
+	@$(MAKE) $(JOBS) -C $(COMPILE_DIR) CFLAGS="$(CFLAGS)" XTA_VER=$(XTABLES_ADDONS_VER) \
+	  MODSWROOT=$(MODSWROOT) KERNEL_VER=$(KERNEL_VER) \
+	  IPTABLES_VERSION=$(IPTABLES_VER) LIB_IPT_DIR=$(IPT_LIBEXEC)
+
+
+binary:
+	dh_testdir
+	dh_testroot
+
+	@tput smso;echo ;echo "Install trafficstats";tput rmso
+	make -C trafficstats install
+	
+	mkdir -vp $(PKG_ROOT)/etc/ld.so.conf
+	echo "/usr/lib/smoothd" > $(PKG_ROOT)/etc/ld.so.conf/smoothd.conf
+
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo $(Time) > Finished_Time
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; cat Finished_Time
+
+build-arch: build
+binary-arch: binary
+

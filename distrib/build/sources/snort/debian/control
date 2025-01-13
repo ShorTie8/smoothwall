@@ -1,0 +1,30 @@
+Source: smoothwall-snort
+Maintainer: Neal P. Murphy <neal.p.murphy@alum.wpi.edu>
+Section: net
+Priority: optional
+Standards-Version: 3.9.6
+Build-Depends: debhelper (>=9),
+ dpkg-dev,
+ libpcap-dev,
+ libdumbnet-dev,
+ libluajit-5.1-dev,
+ libpcre3-dev
+Homepage: https://community.smoothwall.org/forum/index.php
+
+Package: smoothwall-snort
+Architecture: any
+Pre-Depends: debconf | debconf-2.0,
+# Ordered SmoothWall, libreswan, snort
+Depends:, ${shlibs:Depends}, ${misc:Depends},
+ bsdmainutils, dns-root-data, bind9-host, iproute2, iptables, libnspr4, libnss3 (>= 3.16), libnss3-tools,
+ rsyslog | system-log-daemon, logrotate, net-tools, lsb-base, luajit, libpcap0.8, libdnet, libdumbnet1,
+ libpcre3
+Recommends:
+ python,
+#  ike-server twas in Provides and Conflicts, but think it is true/needed
+Provides: smoothwall-snort
+# had to remove libdaq2
+Conflicts: strongswan-libcharon, strongswan-starter, snort (<< ${binary:Version}), snort-mysql, snort-pgsql
+Replaces: ike-server, snort (<< ${binary:Version}), snort-common (<< 2.0.2-3)
+Description: the open-source firewall/filter systems snort
+ Smoothwall snort is the next evolution of the award-winning multi-zone firewall first released in 2002.

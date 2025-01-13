@@ -1,0 +1,61 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+#
+# Top level rule's file for SmoothWall Express.
+
+# dpkg-buildpackage -Tclean		# to clean
+# dpkg-buildpackage -us -uc -b	# too make deb
+
+include /usr/share/dpkg/default.mk
+
+Time=$(shell date +%m/%d/%Y%t%H:%M:%S)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-libsmooth+setup
+export CFLAGS += -fPIC
+$(info PKG_ROOT=$(PKG_ROOT))
+
+clean:
+	@echo; echo -n "    "; tput smso; echo "Clean libsmooth+setup";tput rmso
+	make clean
+	rm -rf $(PKG_ROOT)
+	rm -rf debian/.debhelper
+	rm -rf debian/smoothwall-libsmooth+setup.substvars
+	@echo
+
+build:
+	@echo; echo -n "    "; tput smso; echo "Compile libsmooth+setup";tput rmso
+	@echo $(Time) > Start_Time
+	make
+
+binary:
+	dh_testdir
+	dh_testroot
+
+	@echo; echo -n "    "; tput smso;echo "Install libsmooth";tput rmso
+	@install -v -D libsmooth/libsmooth.o $(PKG_ROOT)/usr/lib/libsmooth.o
+	@install -v -D libsmooth/libsmooth.so $(PKG_ROOT)/usr/lib/libsmooth.so
+	@install -v -D libsmooth/libsmooth.h $(PKG_ROOT)/usr/include/libsmooth.h
+	@install -v -D libsmooth/langs.h $(PKG_ROOT)/usr/include/langs.h
+	mkdir -vp $(PKG_ROOT)/etc/ld.so.conf.d
+	echo "/usr/lib/smoothd" > $(PKG_ROOT)/etc/ld.so.conf.d/smoothd.conf
+
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; date +%H:%M:%S
+
+build-arch: build
+binary-arch: binary
+

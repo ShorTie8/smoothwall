@@ -1,0 +1,56 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+#
+# Top level rule's file for SmoothWall Express.
+
+# dpkg-buildpackage -Tclean		# to clean
+# dpkg-buildpackage -us -uc -b	# too make deb
+
+include /usr/share/dpkg/default.mk
+
+Time=$(shell date +%m/%d/%Y%t%H:%M:%S)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-setup
+export CFLAGS += -fPIC
+#export JOBS = -j$(shell grep processor /proc/cpuinfo|wc -l)
+
+$(info PKG_ROOT=$(PKG_ROOT))
+
+clean:
+	@tput smso;echo; echo "clean setup";tput rmso
+	make -C setup clean
+	rm -rf $(PKG_ROOT)
+
+build:
+	@tput smso;echo; echo "compile setup";tput rmso
+	@echo $(Time) > Start_Time
+	make -C setup programs
+
+binary:
+	dh_testdir
+	dh_testroot
+
+	@tput smso;echo ;echo "install setup";tput rmso
+	install -v -D setup/setup $(PKG_ROOT)/usr/sbin/smoothsetup
+	install -v -D setup/setup $(PKG_ROOT)/usr/sbin/smoothwall-setup
+	
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; date +%H:%M:%S
+
+build-arch: build
+binary-arch: binary
+

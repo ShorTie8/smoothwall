@@ -1,0 +1,25 @@
+#!/bin/sh
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+
+# Define message colors.
+export BOUL="\033[1;34m"	    # light blue
+export OOPS="\033[1;31m"    # red
+export DONE="\033[1;32m"    # green
+export INFO="\033[1;33m"    # yellow
+export STEP="\033[1;34m"    # blue
+export WARN="\033[1;35m"    # hot pink
+export LTBL="\033[1;36m"	# light blue
+export NO="\033[0m"         # normal/light
+
+
+echo; echo "\033[1;34m  Postinstall for \033[1;33m express  \033[0m"
+
+chown -R nobody:nobody /var/smoothwall
+
+exit 0 

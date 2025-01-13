@@ -1,0 +1,29 @@
+#! /bin/sh
+
+# Adjust the new runtime initramfs to reflect the just installed system
+
+. /var/smoothwall/main/kernel
+
+  # Initialize some vars
+  OPWD=`pwd`
+  HDTMP="/tmp/runtimeroot"
+
+  # Unpack, update, repack
+  mkdir -p $HDTMP; cd $HDTMP
+  echo "    unpack"
+  gunzip -c /root/runtimeroot.gz | cpio -id
+
+  echo "    Add rules"
+  mkdir -p -m 755 ${HDTMP}/etc/udev/rules.d
+  cp -v /etc/udev/rules.d/*Smoothwall* ${HDTMP}/etc/udev/rules.d/
+
+  echo "    chroot ${HDTMP} depmod -a"
+  chroot ${HDTMP} depmod -a
+
+  echo "    re-pack"
+  cd ${HDTMP}; find . | cpio -o -H newc | gzip > /boot/initrd-${KERNEL_VER}${KERNEL_TYPE}.gz
+  chmod -v 444 /boot/initrd-${KERNEL_VER}${KERNEL_TYPE}.gz
+
+  cd ${OPWD}
+  rm -rf ${HDTMP}
+

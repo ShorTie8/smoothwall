@@ -1,0 +1,61 @@
+#! /usr/bin/make -f
+
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+
+# dpkg-buildpackage -Tclean		# to clean
+# dpkg-buildpackage -us -uc -b	# too make deb
+
+include /usr/share/dpkg/default.mk
+
+Time=$(shell date +%d/%m/%Y%t%H:%M:%S)
+export PKG_ROOT := $(CURDIR)/debian/smoothwall-device-ids
+$(info PKG_ROOT=$(PKG_ROOT))
+
+clean:
+	@echo; echo -n "      ";tput smso;echo; echo "clean device-ids";tput rmso
+	rm -rf device-ids-0.0
+	rm -rf $(PKG_ROOT)
+
+
+build:
+	@echo; echo -n "      ";tput smso;echo; echo "build device-ids";tput rmso
+	@echo $(Time) > Start_Time
+	mkdir -v device-ids-0.0
+	wget -nc http://pci-ids.ucw.cz/v2.2/pci.ids.bz2
+	wget -nc http://www.linux-usb.org/usb.ids.bz2
+	wget http://standards-oui.ieee.org/oui/oui.txt -O oui.orig.txt
+	cd device-ids-0.0; bunzip2 -v < ../pci.ids.bz2 > pci.ids
+	cd device-ids-0.0; bunzip2 -v < ../usb.ids.bz2 > usb.ids
+	cd device-ids-0.0; ../debian/filter-oui -v
+	
+binary:
+	dh_testdir
+	dh_testroot
+
+	@echo; echo -n "      ";tput smso;echo "Install device-ids";tput rmso
+	mkdir -p $(PKG_ROOT)/usr/lib/smoothwall
+	mv -v device-ids-0.0/oui_vendor.pm $(PKG_ROOT)/usr/lib/smoothwall
+	mkdir -p $(PKG_ROOT)/usr/share
+	cp -v device-ids-0.0/* $(PKG_ROOT)/usr/share
+	
+	dh_compress
+	dh_fixperms
+	dh_strip
+	dh_makeshlibs
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	@echo $(Time) > Finished_Time
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; cat Finished_Time
+
+build-arch: build
+binary-arch: binary
+

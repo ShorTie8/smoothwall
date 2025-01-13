@@ -1,0 +1,38 @@
+#!/bin/sh
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy 2009-2020
+# Parts (c) Jeff Blanner 2020
+#
+# This code is distributed under the terms of the GPL v2.
+
+#. /var/smoothwall/main/hostname.conf
+#include /var/smoothwall/main/hostname.conf
+#source /var/smoothwall/main/hostname.conf
+
+ServerName=`cat /var/smoothwall/main/hostname.conf | cut -d " " -f2`
+
+echo; echo " \033[1;34m  Postinstall for ${ServerName}  \033[1;33m httpd \033[0m "
+
+echo " \033[1;34m    Generate $HOSTNAME keys/certs as needed... \033[0m "
+#if [ ! -e /etc/httpd/conf/server.key ]; then
+        echo " \033[1;34m    Hash CA certs  \033[0m "
+        /usr/bin/openssl genrsa -rand \
+		/boot/vmlinuz-`uname -r`:/var/smoothwall/ethernet/settings:/var/log/dmesg -out \
+		/etc/httpd/server.key 2048
+		
+		echo " \033[1;34m    CSR  \033[0m "
+        sed -e "6 s/Smoothwall/$HOSTNAME/" /etc/certparams | /usr/bin/openssl \
+		req -new -key /etc/httpd/server.key -out /etc/httpd/server.csr
+		
+		echo; echo " \033[1;34m    Signing certificate  \033[0m "
+	/usr/bin/openssl x509 -req -days 999999 -in \
+		/etc/httpd/server.csr -signkey /etc/httpd/server.key -out \
+		/etc/httpd/server.crt
+#fi	
+
+echo " \033[1;34m    Hash CA certs  \033[0m "
+/usr/bin/c_rehash >/dev/null
+
+exit 0 
