@@ -7,9 +7,9 @@
 include ../Makefile.conf
 
 PACKAGE = gettext
-VERSION = 0.17
+VERSION = 0.22
 
-BASE_URL = ftp://ftp.gnu.org/gnu/gettext
+BASE_URL = https://gcc.gnu.org/pub/gcc/infrastructure
 
 CONFIG_OPTS += --disable-libasprintf --without-csharp
 

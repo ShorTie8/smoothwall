@@ -9,7 +9,7 @@ include ../Makefile.conf
 include ../Makefile.versions
 
 PACKAGE = kernel-headers
-VERSION = 0.0
+VERSION = $(KERNELHEADERVER)
 
 CFG_TYPE := $(KERNEL_TYPE)-$(mARCH)
 

@@ -7,11 +7,11 @@
 include ../Makefile.conf
 
 PACKAGE = glibc
-VERSION = 2.18
+VERSION = 2.40
 
-EXTENSION = .tar.bz2
+EXTENSION = .tar.xz
 
-BASE_URL =  ftp://ftp.gnu.org/gnu/glibc
+BASE_URL =  https://ftp.gnu.org/gnu/glibc
 TZ_VERSION = 2024a
 TZ_TARBALL = tzdata$(TZ_VERSION).tar.gz
 TZ_URL =  http://www.iana.org/time-zones/repository/releases/$(TZ_TARBALL)

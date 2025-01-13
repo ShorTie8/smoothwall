@@ -8,19 +8,19 @@ include ../Makefile.conf
 include ../Makefile.versions
 
 PACKAGE = gcc
-VERSION = 4.7.3
+VERSION = $(GCC_VER)
 
-BASE_URL = ftp://ftp.gnu.org/gnu/gcc/gcc-$(VERSION)
-EXTENSION = .tar.bz2
+BASE_URL = https://ftp.gnu.org/gnu/gcc/gcc-$(VERSION)
+EXTENSION = .tar.xz
 
-BASE_MPC = http://www.multiprecision.org/mpc/download
+BASE_MPC = BASE_MPC = https://ftp.gnu.org/gnu/mpc
 TAR_MPC = mpc-$(MPC_VER).tar.gz
 
-BASE_GMP = ftp://ftp.gnu.org/gnu/gmp
-TAR_GMP = gmp-$(GMP_VER).tar.bz2
+BASE_GMP = https://ftp.gnu.org/gnu/gmp
+TAR_GMP = gmp-$(GMP_VER).tar.xz
 
 BASE_MPFR = http://www.mpfr.org/mpfr-$(MPFR_VER)
-TAR_MPFR = mpfr-$(MPFR_VER).tar.bz2
+TAR_MPFR = mpfr-$(MPFR_VER).tar.xz
 
 COMPILE_DIR = $(DIR)-compile
 
@@ -61,9 +61,9 @@ CONFIG_OPTS = \
 
 PATCH = yes
 patch: $(DIR)/
-	cd $(DIR); tar -xvf ../../../downloads/$(TAR_GMP); mv gmp-$(GMP_VER) gmp
-	cd $(DIR); tar -xvf ../../../downloads/$(TAR_MPFR); mv mpfr-$(MPFR_VER) mpfr
-	cd $(DIR); tar -xvf ../../../downloads/$(TAR_MPC); mv mpc-$(MPC_VER) mpc
+	cd $(DIR); tar -xf ../../../downloads/$(TAR_GMP); mv gmp-$(GMP_VER) gmp
+	cd $(DIR); tar -xf ../../../downloads/$(TAR_MPFR); mv mpfr-$(MPFR_VER) mpfr
+	cd $(DIR); tar -xf ../../../downloads/$(TAR_MPC); mv mpc-$(MPC_VER) mpc
 	cd $(DIR); \
 	  for file in `find gcc/config -name linux64.h -o -name linux.h -o -name sysv4.h`; \
 	  do \
