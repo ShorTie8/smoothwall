@@ -68,7 +68,7 @@ export mARCH = $(shell uname -m | sed -e 's/i.86/$(ARCH32)/')
 endif
 
 export mTUPLE = $(mARCH)
-
+export LDFLAGS = -Wl,-O1 -Wl,--as-needed OPTIMIZE=-O2 -pipe
 
 # See what we can build; that is, see if the chosen mARCH is possible.
 # If building on a multilib host, both will be zero. If building on pure i686
@@ -104,6 +104,16 @@ ifeq ($(mARCH),$(ARCH32))
   ifeq ($(CANi686), 0)
     export ARCHset = linux32
   endif
+endif
+
+ifeq ($(mARCH),aarch64)
+  export ARCH = arm64
+  export ARCH_OK = yes
+  export BITS_64 = yes
+  export ARCHset = linux64
+  export SWE_TGT = aarch64-tools-linux-gnu
+  export FINAL_TGT = aarch64-SWE-linux-gnu
+  export CFLAGS = $(OPT_FLAGS) -fPIC
 endif
 
 ifeq ($(ARCHset),)

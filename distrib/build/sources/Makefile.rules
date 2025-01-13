@@ -4,41 +4,55 @@
 #
 # This code is distributed under the terms of the GPL v2.
 
+
 ifndef DOWNLOAD
 download:
-	@$(PRE_DL) $(DL_CMD) $(BASE_URL)/$(TARBALL)$(EXTENSION) $(MD5)
+	@echo; echo "Download"
+	wget -nc $(BASE_URL)/$(TARBALL)$(EXTENSION) $(MD5)
 ifdef PATCH_URL1
-	@$(DL_CMD) $(PATCH_URL1) $(PATCH_MD51)
+	wget -nc $(PATCH_URL1) $(PATCH_MD51)
 endif
 ifdef PATCH_URL2
-	@$(DL_CMD) $(PATCH_URL2) $(PATCH_MD52)
+	wget -nc $(PATCH_URL2) $(PATCH_MD52)
 endif
 ifdef PATCH_URL3
-	@$(DL_CMD) $(PATCH_URL3) $(PATCH_MD53)
+	wget -nc $(PATCH_URL3) $(PATCH_MD53)
 endif
 ifdef PATCH_URL4
-	@$(DL_CMD) $(PATCH_URL4) $(PATCH_MD54)
+	wget -nc $(PATCH_URL4) $(PATCH_MD54)
 endif
 ifdef PATCH_URL5
-	@$(DL_CMD) $(PATCH_URL5) $(PATCH_MD55)
+	wget -nc $(PATCH_URL5) $(PATCH_MD55)
 endif
 endif
 
 ifndef PREPARE
 $(DIR)/: download
-	tar -xvf $(DOWNLOADS_DIR)/$(TARBALL)$(EXTENSION)
+	@echo; echo "PrePare  $(DOWNLOAD_DIR)/$(TARBALL)$(EXTENSION)"
+	tar -xf $(DOWNLOAD_DIR)/$(TARBALL)$(EXTENSION)
+ifdef ReConfigure
+	@echo; echo "ReConfigure"; echo "libtoolize --install --copy --force --automake"
+	cd $(DIR); libtoolize --install --copy --force --automake
+	@echo; echo "aclocal -I m4, if dir ??"
+#	cd $(DIR); aclocal -I m4
+	@echo; echo "autoreconf --verbose --force --install"
+#	cd $(DIR); autoreconf --verbose --force --install
+endif
 endif
 
 ifndef PATCH
 patch: $(DIR)/
-	for PATCH in $(PATCH_URL1) $(PATCH_URL2) $(PATCH_URL3) $(PATCH_URL4) $(PATCH_URL5); do \
-	  FILENAME=$(DOWNLOADS_DIR)/`basename $$PATCH`; \
+ifdef PATCH_FILE1
+	@echo; echo "Patch";echo
+	@for PATCH in $(PATCH_URL1) $(PATCH_URL2) $(PATCH_URL3) $(PATCH_URL4) $(PATCH_URL5); do \
+	  FILENAME=$(DOWNLOAD_DIR)/`basename $$PATCH`; \
 	  cp $$FILENAME ./; \
 	done; \
 	(cd $(DIR); \
 	for PATCH in $(PATCH_FILE1) $(PATCH_FILE2) $(PATCH_FILE3) $(PATCH_FILE4) $(PATCH_FILE5); do \
 	  tput smso; echo $$PATCH; tput rmso; \
 	  FILENAME=../$$PATCH; \
+	  echo; echo $$FILENAME; \
 	  [ -f $$FILENAME ] || exit 8; \
 	  if echo $$FILENAME | grep -q \.gz$$; then \
 	    zcat $$FILENAME | patch -p1 || exit 10; \
@@ -48,60 +62,77 @@ patch: $(DIR)/
 	    cat $$FILENAME | patch -p1 || exit 14; \
 	  fi; \
 	done;)
+else
+	@echo; echo "No Patches"
+endif
 endif
 
 ifndef CONFIGURE
 configure: patch
-	(if [ ! -e $(COMPILE_DIR) ]; then mkdir $(COMPILE_DIR); fi)
+	@echo; echo; echo "Configure"; echo
+	(if [ ! -e $(COMPILE_DIR) ]; then mkdir -v $(COMPILE_DIR); fi)
 ifneq ($(DIR), $(COMPILE_DIR))
-	(cd $(COMPILE_DIR); CXXFLAGS="$(CFLAGS)" CFLAGS="$(CFLAGS)" $(PRE_CONFIGURE) ../$(DIR)/configure --prefix=$(PKG_DIR) $(CONFIG_OPTS))
+	@echo "PKG_DIR tis $(PKG_DIR)"
+	@echo "CONFIG_OPTS tis $(CONFIG_OPTS)"
+	(cd $(COMPILE_DIR); CXXFLAGS="$(CFLAGS)" CFLAGS="$(CFLAGS)" $(PRE_CONFIGURE) ../$(DIR)/configure $(CONFIG_OPTS))
 else
-	(cd $(COMPILE_DIR); CXXFLAGS="$(CFLAGS)" CFLAGS="$(CFLAGS)" $(PRE_CONFIGURE) ./configure --prefix=$(PKG_DIR) $(CONFIG_OPTS))
+	(cd $(COMPILE_DIR); CXXFLAGS="$(CFLAGS)" CFLAGS="$(CFLAGS)" $(PRE_CONFIGURE) ./configure $(CONFIG_OPTS))
 endif
 endif
 
 ifndef COMPILE
 compile: configure
+	@echo; echo; echo "Compile"; echo
 	+$(PRE_COMPILE) $(MAKE) ${JOBS} -C $(COMPILE_DIR)
 endif
 
 ifndef RECOMPILE
 recompile: 
+	@echo; echo; echo "ReCompile"; echo
 	+$(MAKE) ${JOBS} -C $(COMPILE_DIR)
 endif
 
 ifndef INSTALL
 install: compile
-	mkdir -p $(PKG_ROOT)
+	@echo; echo; echo "Install"; echo
+	mkdir -vp $(PKG_ROOT)
 	+$(MAKE) -C $(COMPILE_DIR) DESTDIR=$(PKG_ROOT) install
 endif
 
 ifndef BUILDTARBALL
 $(TARGET_DIR)/smoothwall-$(PACKAGE).tar.gz: install
-	tar -zcvf $(TARGET_DIR)/smoothwall-$(PACKAGE).tar.gz -C $(PKG_ROOT) .
-	tar -zxvf $(TARGET_DIR)/smoothwall-$(PACKAGE).tar.gz -C /
+	@echo; echo; echo "Build Tarball"
+	tar -zcf $(TARGET_DIR)/smoothwall-$(PACKAGE).tar.gz -C $(PKG_ROOT) .
+##	Programs
+ifneq ($(BUILD_PHASE), Programs)
+	@echo; echo; echo "Install tarball"
+	tar -zvxf $(TARGET_DIR)/smoothwall-$(PACKAGE).tar.gz -C /
+endif
 endif
 
 ifndef CLEAN
 clean:
+ifndef BUILD_PHASE
 	@echo -n " $(PACKAGE)"
 	@rm -rf $(DIR)
 	@rm -rf $(COMPILE_DIR)
+else
+	@echo " $(PACKAGE)"
+	@echo; echo "Clean"
+	rm -rf $(DIR)
+	rm -rf $(COMPILE_DIR)
 ifeq ($(BUILD_PHASE), Final)
-	@rm -rf $(PKG_ROOT); mkdir -p $(PKG_ROOT)
-ifeq ($(BITS_64), yes)
-	mkdir -p $(PKG_ROOT)/{lib,usr/lib}
-	@cd $(PKG_ROOT); ln -s lib lib64
-	@cd $(PKG_ROOT)/usr; ln -s lib lib64
+	rm -rf $(PKG_ROOT)
+	mkdir -vp $(PKG_ROOT)
+	rm -vf $(TARGET_DIR)/smoothwall-$(PACKAGE).tar.gz
 endif
-	@rm -f $(TARGET_DIR)/smoothwall-$(PACKAGE).tar.gz
 endif
 endif
 
 ifndef PACKAGEINFO
 packageinfo.html:
 	@echo "<li><span style='font-size:large;'>$(PACKAGE) $(VERSION)</span><br>" >>/tmp/packageinfo.html
-	@cp -avR $(DOWNLOADS_DIR)/$(TARBALL)$(EXTENSION) /tmp/downloads
+	@cp -avR $(DOWNLOAD_DIR)/$(TARBALL)$(EXTENSION) /tmp/downloads
 	@echo "Download: <a href='$(BASE_URL)$(TARBALL)$(EXTENSION)'>$(BASE_URL)$(TARBALL)$(EXTENSION)</a>" >>/tmp/packageinfo.html
 	@echo "(<a href='downloads/$(TARBALL)$(EXTENSION)'>Local mirror</a>)<br>" >>/tmp/packageinfo.html
 	@echo "Patches:" >>/tmp/packageinfo.html
