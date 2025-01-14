@@ -68,7 +68,6 @@ export mARCH = $(shell uname -m | sed -e 's/i.86/$(ARCH32)/')
 endif
 
 export mTUPLE = $(mARCH)
-export LDFLAGS = -Wl,-O1 -Wl,--as-needed OPTIMIZE=-O2 -pipe
 
 # See what we can build; that is, see if the chosen mARCH is possible.
 # If building on a multilib host, both will be zero. If building on pure i686

@@ -223,7 +223,7 @@ build: crumbs/host.checked crumbs/Final.built
 #
 crumbs/Debian.built:
 	@(tput smso; echo -e "\nDebian Build"; tput rmso) <$(BUILD_IN) >>$(BUILD_OUT) 2>&1
-	env -i toolcrib/make_debian
+	env -i toolcrib/make_debs
 	#@touch crumbs/debian.built
 
 debs: crumbs/Debian.built
@@ -390,7 +390,7 @@ clean:
 	  no_be=1 $(ARCHset) $(MAKE) --no-print-directory clean-sources; \
 	  no_be=1 $(MAKE) --no-print-directory clean-tools; \
 	  no_be=1 $(MAKE) --no-print-directory clean-crumbs; \
-#	  no_be=1 $(MAKE) --no-print-directory clean-debway; \
+	  no_be=1 $(MAKE) --no-print-directory clean-debway; \
 	  rm -f $(SRC_TGZ); \
 	  rm -f nohup.out; \
 	fi
@@ -398,21 +398,21 @@ clean:
 
 ##	Clan the Debian way
 clean-debway:
-#	cd sources/coretree; dpkg-buildpackage -Tclean
+	cd sources/coretree; dpkg-buildpackage -Tclean; echo; echo
 #	cd sources/libsmooth; dpkg-buildpackage -Tclean
-#	cd sources/libsmooth+setup; dpkg-buildpackage -Tclean
-#	cd sources/libsmooth+setup-git; make clean
-#	cd sources/smoothd; dpkg-buildpackage -Tclean
-#	cd sources/express; dpkg-buildpackage -Tclean
-	cd sources/httpd; dpkg-buildpackage -Tclean
-	cd sources/snort; dpkg-buildpackage -Tclean
-	cd sources/beep2; dpkg-buildpackage -Tclean
-	cd sources/setup; dpkg-buildpackage -Tclean
-	cd sources/setkerneltz; dpkg-buildpackage -Tclean
-	cd sources/grub; dpkg-buildpackage -Tclean
-	cd sources/trafficstats; dpkg-buildpackage -Tclean
-	cd sources/runtimeroot; dpkg-buildpackage -Tclean
-	cd sources/device-ids; dpkg-buildpackage -Tclean
+	cd sources/libsmooth+setup; dpkg-buildpackage -Tclean; echo; echo
+#	cd sources/libsmooth+setup-git; make clean; echo; echo
+#	cd sources/smoothd; dpkg-buildpackage -Tclean; echo; echo
+	cd sources/express; dpkg-buildpackage -Tclean; echo; echo
+	cd sources/httpd; dpkg-buildpackage -Tclean; echo; echo
+	cd sources/snort; dpkg-buildpackage -Tclean; echo; echo
+	cd sources/beep2; dpkg-buildpackage -Tclean; echo; echo
+#	cd sources/setup; dpkg-buildpackage -Tclean; echo; echo
+	cd sources/setkerneltz; dpkg-buildpackage -Tclean; echo; echo
+	cd sources/grub; dpkg-buildpackage -Tclean; echo; echo
+#	cd sources/trafficstats; dpkg-buildpackage -Tclean; echo; echo
+	cd sources/runtimeroot; dpkg-buildpackage -Tclean; echo; echo
+	cd sources/device-ids; dpkg-buildpackage -Tclean; echo; echo
 
 
 # Empty the buildroot directory

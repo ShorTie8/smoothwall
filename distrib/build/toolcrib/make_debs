@@ -1,0 +1,356 @@
+#!/bin/bash +h
+#
+# SmoothWall Build system.
+#
+# Parts (c) SmoothWall Ltd 2005
+# Parts (c) Neal P. Murphy, 2009
+#
+# This code is distributed under the terms of the GPL v2.
+#
+
+# Turn off path caching
+set +h
+ 
+# When building the toolchain, use the host's sudo to become root. It may require
+#   entering a password or three, but that's preferable to clobbering the host's
+#   rootfs.
+
+# First be sure we are being run from the build directory, not from a relative path
+#   'make -C build build' does it right; this is in case this script is run en mano.
+#
+ME=`basename $0`
+if [ "$0" != "toolcrib/$ME" -a "$0" != "./toolcrib/$ME" ]; then
+  echo "Please operate the build system from the build directory!"
+  exit 1
+fi
+unset ME
+
+. crumbs/build_environment
+
+# Handle redirection
+exec <${BUILD_IN} >>${BUILD_OUT} 2>&1
+
+# For debugging
+(
+  echo -e "\nInitial environment:"
+  tput smso;echo PRE-SET;tput rmso;set;echo
+  tput smso;echo PRE-ENV;tput rmso;env|sort;echo
+  tput smso;echo PRE-EXPORT;tput rmso;export;echo
+) > crumbs/make_deb.debug
+
+# Grab our needed environment and utility functions
+#
+source toolcrib/environment
+source toolcrib/functions
+
+# Set up parallel make, as needed
+#   First export/define the three associated vars
+#   Then get the CPU count and set the _MP option
+export JOBS
+export JOBS_UP="-j 1"
+export JOBS_MP
+cpu_count
+
+
+# Build a deb for $1
+#
+echo; echo; echo -n "      "; tput smso; echo "Building SmoothWall Express 4.0a";tput rmso;echo
+deb_startTIME=`date +%s`-beginTIME
+deb_displayTIME=`perl -e "printf('%6d', $deb_startTIME);"`
+
+#echo $(deb_startTIME)
+
+builddeb ipbatch
+
+exit 42
+
+
+##	Set master PKG_ROOT ??
+	@if [ ! -f /etc/ld.so.conf.d/smoothd.conf ]; then echo "/usr/lib/smoothd" > /etc/ld.so.conf.d/smoothd.conf; fi
+
+#	#######################################  iptables  ###############################
+#	# apt install bison flex libmnl-dev libnetfilter-conntrack-dev libnfnetlink-dev libnftnl-dev
+#	  #sed 's/enable-devel/enable-devel --enable-static/g' -i debian/rules; \
+	echo -n "    "; tput smso; echo "iptables-$(IPTABLES_VER)";tput rmso
+	@if [ ! -d iptables/iptables-$(IPTABLES_VER) ]; then mkdir -vp iptables/iptables-$(IPTABLES_VER); fi
+	@if [ ! -f iptables/Full-Build.done ]; then \
+	  make -C iptables compile 2>&1 | tee Full-Build.out; \
+	  touch iptables/Full-Build.done; \
+	else \
+	  echo "  iptables already built"; \
+	fi
+
+#	#######################################  libsmooth  ###############################
+	@if [ ! -f libsmooth/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "libsmooth";tput rmso; \
+	  cd libsmooth; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-libsmooth* debs || exit 1; \
+	  echo; echo -n "    "; tput smso; echo "Installing libsmooth ";tput rmso; \
+	  dpkg -i debs/smoothwall-libsmooth_0.0-1_$(DEB_HOST_ARCH).deb || exit 1; \
+	  touch libsmooth/Full-Build.done; \
+	else \
+	  echo "  libsmooth already built"; \
+	fi
+
+#	#######################################  smoothd  #################################
+	@if [ ! -f smoothd/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "Smoothd";tput rmso; \
+	  cd smoothd; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-smoothd* debs || exit 1; \
+	  echo; echo -n "    "; tput smso; echo "Installing smoothd ";tput rmso; \
+	  dpkg -i debs/smoothwall-smoothd_1.0-1_$(DEB_HOST_ARCH).deb || exit 1; \
+	  touch smoothd/Full-Build.done; \
+	else \
+	  echo "  smoothd already built"; \
+	fi
+
+#	#######################################  setup  ###################################
+	@if [ ! -f setup/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "SmoothWall Setup";tput rmso; \
+	  cd setup; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-setup* debs || exit 1; \
+	  echo; echo -n "    "; tput smso; echo "Installing SmoothWall Setup ";tput rmso; \
+	  dpkg -i debs/smoothwall-setup_4.0-1_${DEB_HOST_ARCH}.deb || exit 1; \
+	  touch setup/Full-Build.done; \
+	else \
+	  echo "  SmoothWall Setup already built"; \
+	fi
+
+#	#######################################  coretree  ################################
+	@if [ ! -f coretree/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "coretree";tput rmso; \
+	  cd coretree; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-coretree* debs || exit 1; \
+	  echo; echo -n "    "; tput smso; echo "Installing coretree ";tput rmso; \
+	  dpkg -i debs/smoothwall-coretree_4.0pa-1_$(DEB_HOST_ARCH).deb || exit 1; \
+	  touch coretree/Full-Build.done; \
+	else \
+	  echo "  coretree already built"; \
+	fi
+
+
+
+#	#######################################  express  #################################
+	@if [ ! -f express/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "Express";tput rmso; \
+	  cd express; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-express* debs || exit 1; \
+	  echo; echo -n "    "; tput smso; echo "Installing express ";tput rmso; \
+	  dpkg -i debs/smoothwall-express_4.0pa-1_$(DEB_HOST_ARCH).deb || exit 1; \
+	  touch express/Full-Build.done; \
+	else \
+	  echo "  express already built"; \
+	fi
+
+#	#######################################  httpd  ###############################
+	@if [ ! -f httpd/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "httpd";tput rmso; \
+	  cd httpd; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-httpd* debs || exit 1; \
+	  echo; echo -n "    "; tput smso; echo "Installing httpd ";tput rmso; \
+	  dpkg -i debs/smoothwall-httpd_4.0pa-1_$(DEB_HOST_ARCH).deb || exit 1; \
+	  touch httpd/Full-Build.done; \
+	else \
+	  echo "  httpd already built"; \
+	fi
+
+
+#	exit 22
+
+
+#	# apt install htmldoc libpam0g-dev man2html xmlto
+#	#######################################  libreswan  ###############################
+	@if [ ! -d libreswan-$(LIBRESWAN_VER) ]; then \
+	  mkdir -v libreswan-$(LIBRESWAN_VER); \
+	fi
+	@if [ ! -f libreswan-$(LIBRESWAN_VER)/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "libreswan Debian";tput rmso; \
+	  echo "  Checking for libreswan_$(LIBRESWAN_VER).orig.tar.gz"; \
+	  if [ ! -f downloads/libreswan_$(LIBRESWAN_VER).orig.tar.gz ]; then \
+		wget http://deb.debian.org/debian/pool/main/libr/libreswan/libreswan_$(LIBRESWAN_VER).orig.tar.gz -O downloads/libreswan_$(LIBRESWAN_VER).orig.tar.gz || exit 1; \
+	  else \
+		echo "    already got it"; \
+	  fi; \
+	  rm -rf libreswan-$(LIBRESWAN_VER); \
+	  echo "  Checking for libreswan_$(LIBRESWAN_VER)-1.debian.tar.xz"; \
+	  if [ ! -f downloads/libreswan_$(LIBRESWAN_VER)-1.debian.tar.xz ]; then \
+		wget http://deb.debian.org/debian/pool/main/libr/libreswan/libreswan_$(LIBRESWAN_VER)-1.debian.tar.xz -O downloads/libreswan_$(LIBRESWAN_VER)-1.debian.tar.xz || exit 1; \
+	  else \
+		echo "    already got it"; \
+	  fi; \
+	  tar xf downloads/libreswan_$(LIBRESWAN_VER).orig.tar.gz; \
+	  cd libreswan-$(LIBRESWAN_VER); \
+	  tar xf ../downloads/libreswan_$(LIBRESWAN_VER)-1.debian.tar.xz; \
+	  patch -p1 < ../tools/libreswan-patches/libreswan-control.patch; \
+	  echo -n "    "; tput smso; echo "libreswan-$(LIBRESWAN_VER)";tput rmso; \
+	  dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mkdir -vp debs/libreswan-$(LIBRESWAN_VER); \
+	  mv -v libreswan_$(LIBRESWAN_VER)*.changes debs/libreswan-$(LIBRESWAN_VER)-2_$(DEB_HOST_ARCH).changes || exit 1; \
+	  mv -v libreswan_$(LIBRESWAN_VER)* debs/libreswan-$(LIBRESWAN_VER) || exit 1; \
+	  mv -v libreswan-dbgsym_$(LIBRESWAN_VER)* debs/libreswan-$(LIBRESWAN_VER) || exit 1; \
+	  touch libreswan-$(LIBRESWAN_VER)/Full-Build.done; \
+	else \
+	  echo "  libreswan-$(LIBRESWAN_VER) already built"; \
+	fi
+
+
+#	#######################################  snort  ###############################
+	@if [ ! -f snort/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "Snort";tput rmso; \
+	  cd snort; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-snort* debs || exit 1; \
+	  touch snort/Full-Build.done; \
+	else \
+	  echo "  snort already built"; \
+	fi
+
+#	#######################################  miniupnpd  ###############################
+	@if [ ! -f miniupnpd-$(MINIUPNPD_VER)/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "miniupnpd";tput rmso; \
+	  echo "  Checking for miniupnpd_$(MINIUPNPD_VER).orig.tar.gz"; \
+	  if [ ! -f downloads/miniupnpd_$(MINIUPNPD_VER).orig.tar.gz ]; then \
+		wget http://deb.debian.org/debian/pool/main/m/miniupnpd/miniupnpd_$(MINIUPNPD_VER).orig.tar.gz -O downloads/miniupnpd_$(MINIUPNPD_VER).orig.tar.gz || exit 1; \
+	  else \
+		echo "    already got it"; \
+	  fi; \
+	  rm -rf miniupnpd-$(MINIUPNPD_VER); \
+	  echo "  Checking for miniupnpd_$(MINIUPNPD_VER)-1.debian.tar.xz"; \
+	  if [ ! -f downloads/miniupnpd_$(MINIUPNPD_VER)-1.debian.tar.xz ]; then \
+		wget http://deb.debian.org/debian/pool/main/m/miniupnpd/miniupnpd_$(MINIUPNPD_VER)-1.debian.tar.xz -O downloads/miniupnpd_$(MINIUPNPD_VER)-1.debian.tar.xz || exit 1; \
+	  else \
+		echo "    already got it"; \
+	  fi; \
+	  tar xf downloads/miniupnpd_$(MINIUPNPD_VER).orig.tar.gz; \
+	  cd miniupnpd-$(MINIUPNPD_VER); \
+	  tar xf ../downloads/miniupnpd_$(MINIUPNPD_VER)-1.debian.tar.xz; \
+  	  cp -v ../tools/miniupnpd-patches/* debian/patches; \
+  	  echo "configure.patch" >> debian/patches/series; \
+  	  echo "umask.patch" >> debian/patches/series; \
+  	  echo "changelog.patch" >> debian/patches/series; \
+	  cd ..; \
+	  echo -n "    "; tput smso; echo "miniupnpd-$(MINIUPNPD_VER)";tput rmso; \
+	  cd miniupnpd-$(MINIUPNPD_VER); dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mkdir -vp debs/miniupnpd-$(MINIUPNPD_VER); \
+	  mv -v miniupnpd_$(MINIUPNPD_VER)*.changes debs/miniupnpd-$(MINIUPNPD_VER)-6_$(DEB_HOST_ARCH).changes || exit 1; \
+	  mv -v miniupnpd_$(MINIUPNPD_VER)* debs/miniupnpd-$(MINIUPNPD_VER) || exit 1; \
+	  mv -v miniupnpd-iptables_$(MINIUPNPD_VER)* debs/miniupnpd-$(MINIUPNPD_VER) || exit 1; \
+	  mv -v miniupnpd-iptables-dbgsym_$(MINIUPNPD_VER)* debs/miniupnpd-$(MINIUPNPD_VER) || exit 1; \
+	  mv -v miniupnpd-nftables_$(MINIUPNPD_VER)* debs/miniupnpd-$(MINIUPNPD_VER) || exit 1; \
+	  mv -v miniupnpd-nftables-dbgsym_$(MINIUPNPD_VER)* debs/miniupnpd-$(MINIUPNPD_VER) || exit 1; \
+	  touch miniupnpd-$(MINIUPNPD_VER)/Full-Build.done; \
+	else \
+	  echo "  miniupnpd-$(MINIUPNPD_VER) already built"; \
+	fi
+
+
+#	#######################################  beep2  ###################################
+	@if [ ! -f beep2/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "Beep2";tput rmso; \
+	  cd beep2; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-beep2* debs || exit 1; \
+	  touch beep2/Full-Build.done; \
+	else \
+	  echo "  beep2 already built"; \
+	fi
+
+#	#######################################  setkerneltz  #############################
+	@if [ ! -f setkerneltz/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "setkerneltz";tput rmso; \
+	  cd setkerneltz; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-setkerneltz* debs || exit 1; \
+	  touch setkerneltz/Full-Build.done; \
+	else \
+	  echo "  setkerneltz already built"; \
+	fi
+
+
+#	#######################################  trafficstats  ############################
+	@if [ ! -f trafficstats/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "trafficstats";tput rmso; \
+	  #cd trafficstats; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  #cd ..; \
+	  #mv -v smoothwall-trafficstats* debs || exit 1; \
+	  #touch trafficstats/Full-Build.done; \
+	else \
+	  echo "  trafficstats already built"; \
+	fi
+
+
+#	#######################################  grub  ####################################
+ifeq ("$(DEB_HOST_ARCH)", amd64)
+	@if [ ! -f grub/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "Grub";tput rmso; \
+	  cd grub; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-grub* debs || exit 1; \
+	  touch grub/Full-Build.done; \
+	else \
+	  echo "  grub already built"; \
+	fi
+endif
+
+
+
+#	#######################################  runtimeroot  #############################
+	@if [ ! -f runtimeroot/Full-Build.done ]; then \
+	  echo -n "    "; tput smso; echo "runtimeroot";tput rmso; \
+	  cd runtimeroot; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+	  cd ..; \
+	  mv -v smoothwall-runtimeroot* debs || exit 1; \
+	  dpkg -i debs/smoothwall-runtimeroot_0.0-1_$(DEB_HOST_ARCH).deb || exit 1; \
+	  #touch runtimeroot/Full-Build.done; \
+	else \
+	  echo "  runtimeroot already built"; \
+	fi
+
+	@echo -n "Start time  "; cat Start_Time
+	@echo -n "Finished time          "; date +%H:%M:%S
+	touch Finished_Time
+
+
+
+#ifeq ("$(DEB_HOST_ARCH)", aarm64)
+#	@if [ ! -f linux/Full-Build.done ]; then \
+#	  tput smso;echo; echo "linux";tput rmso; \
+#	  cd linux; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+#	  cd ..; \
+#	  mv -v smoothwall-linux* debs || exit 1; \
+#	  touch linux/Full-Build.done; \
+#	else \
+#	  echo "  linux already built"; \
+#	fi
+#endif
+
+
+#	@if [ ! -f device-ids/Full-Build.done ]; then \
+#	  echo -n "    "; tput smso; echo "device-ids";tput rmso; \
+#	  cd device-ids; dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+#	  cd ..; \
+#	  mv -v smoothwall-device-ids* debs || exit 1; \
+#	  touch device-ids/Full-Build.done; \
+#	else \
+#	  echo "  device-ids already built"; \
+#	fi
+
+
+
+# For debugging
+(
+  echo -e "\nEnvironment on exit:"
+tput smso;echo POST-SET;tput rmso;set;echo
+tput smso;echo POST-ENV;tput rmso;env|sort;echo
+tput smso;echo POST-EXPORT;tput rmso;export;echo
+) >> crumbs/tc-Stage_$1.debug
+
+

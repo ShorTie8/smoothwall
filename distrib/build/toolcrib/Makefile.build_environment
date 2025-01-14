@@ -17,6 +17,8 @@ prep_env:
 	  echo -e "export ROOT=\"\"\nexport KERNEL_TYPE=\"$(KERNEL_TYPE)\""; \
 	  echo -e "export BUILD_IN=\"$(BUILD_IN)\"\nexport BUILD_OUT=\"$(BUILD_OUT)\""; \
 	  echo -e "export ARCH32=\"$(ARCH32)\"\nexport ARCH64=\"$(ARCH64)\""; \
+	  echo -e "export DISTRIB_PATH=\"$(DISTRIB_PATH)\"\nexport LDFLAGS=\"$(LDFLAGS)\""; \
+	  echo -e "export ARCH=\"$(ARCH)\"\nexport PWD=\"$(PWD)\""; \
 	  echo -e "export TAR_OPTIONS=\"--no-same-owner --no-same-permissions\""; \
 	) | sort > crumbs/build_environment
 	@ # Also truncate the progress log (no-op if it's a tty)

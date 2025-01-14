@@ -1,0 +1,68 @@
+diff --git a/distrib/build/toolcrib/functions b/distrib/build/toolcrib/functions
+index 3cb8110..72c63de 100644
+--- a/distrib/build/toolcrib/functions
++++ b/distrib/build/toolcrib/functions
+@@ -98,20 +98,53 @@ function builddeb()
+   VERSION=`make --no-print-directory -C sources/$1 show_version 2>&1`
+   startTIME=`date +%s`-beginTIME
+   displayTIME=`perl -e "printf('%6d', $startTIME);"`
+-  if [ ! -f sources/$1/Debian-Build.done ]; then \
+-	echo; echo "$1"; \
+-	cd sources/$1; \
+-	dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
+-	cd ..; \
+-	mv -v smoothwall-$1* ../debs || exit 1; \
+-	touch $1/Debian-Build.done; \
+-	cd ..; \
+-  else \
+-	echo "  $1 already built"; \
++  if [ -e crumbs/Debian.compiled ]; then
++    echo -e "\n    Debian phase packages already compiled"
++  else
++    echo
++    if [ -e crumbs/Debian.compiled ]; then
++      echo -e "  Debian Packages already Built"
++    else
++      echo
++      echo -e "  Debian Packages"
++      if [ -p crumbs/monpipe ]; then echo "-${BUILD_PHASE/Stage_/} $1" > crumbs/monpipe; fi
++      echo "    $displayTIME $1 ($VERSION) "
++      status=$?
++      if [ -p crumbs/monpipe ]; then echo "Done End" > crumbs/monpipe; fi
++      #touch crumbs/Debian.compiled
++    fi    
+   fi
+ }
+  
++function make_debian()
++{
+ 
++  if [ -e crumbs/Debian.compiled ]; then
++    echo -e "\n    Debian phase packages already compiled"
++  else
++    echo
++    if [ -e crumbs/Debian.compiled ]; then
++      echo -e "  Debian Packages already Built"
++    else
++      echo
++      echo -e "  Debian Packages"
++      make_deb beep2
++      builddeb coretree
++      builddeb device-ids
++      builddeb express
++    #  builddeb httpd
++        builddeb libsmooth
++    #  builddeb runtimeroot
++      builddeb setkerneltz
++      builddeb setup
++      #  builddeb smoothd
++      #  builddeb snort
++      #  builddeb trafficstats
++        #touch crumbs/Debian.grp1.compiled
++      #touch crumbs/Debian.compiled
++    fi
++  fi
++}
+ 
+ function buildprog()
+ {
