@@ -98,20 +98,20 @@ function builddeb()
   VERSION=`make --no-print-directory -C sources/$1 show_version 2>&1`
   startTIME=`date +%s`-beginTIME
   displayTIME=`perl -e "printf('%6d', $startTIME);"`
-  if [ ! -f sources/$1/Debian-Build.done ]; then \
-	echo; echo "$1"; \
-	cd sources/$1; \
-	dpkg-buildpackage -us -uc -b 2>&1 | tee Full-Build.out; \
-	cd ..; \
-	mv -v smoothwall-$1* ../debs || exit 1; \
-	touch $1/Debian-Build.done; \
-	cd ..; \
-  else \
-	echo "  $1 already built"; \
+  if [ ! -f sources/$1/Debian-Build.done ]; then
+	echo; echo "$1"
+	cd sources/$1; dpkg-buildpackage -us -uc -b > sources/$1/$BUILD_PHASE.out 2>&1
+    if [ $status -eq 0 ]; then
+      touch sources/$1/$BUILD_PHASE.built
+    else
+      exit 1
+    fi
+	cd ..
+	mv -v smoothwall-$1* ../debs
+  else
+	echo "  $1 already built"
   fi
 }
- 
-
 
 function buildprog()
 {
@@ -123,7 +123,9 @@ function buildprog()
   else
     if [ -p crumbs/monpipe ]; then echo "-${BUILD_PHASE/Stage_/} $1" > crumbs/monpipe; fi
     echo "    $displayTIME $1 ($VERSION) "
+    echo "clean"
     ( docommand "$1" "make -C sources/$1 clean") > sources/$1/$BUILD_PHASE.out 2>&1
+    echo "compile"
     ( docommand "$1" "make -C sources/$1 compile") > sources/$1/$BUILD_PHASE.out 2>&1
 #    ( docommand "$1" "make -C sources/$1 clean install") > sources/$1/$BUILD_PHASE.out 2>&1
     status=$?
@@ -135,8 +137,6 @@ function buildprog()
     fi
   fi
 }
-
-
 
 
 # function build_tc_stage_1()

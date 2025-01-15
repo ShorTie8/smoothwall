@@ -194,6 +194,25 @@ crumbs/toolchain.built: crumbs/host.checked crumbs/tc_stage_3.built
 
 toolchain: crumbs/toolchain.built
 
+# build debian
+#
+crumbs/Debian.built:
+	@(tput smso; echo -e "\nDebian Build"; tput rmso) <$(BUILD_IN) >>$(BUILD_OUT) 2>&1
+	@+$(ARCHset) env -i toolcrib/make_toolchain debs
+	exit 104
+	@touch crumbs/debian.built
+
+debs: crumbs/host.checked crumbs/tc_prep.built crumbs/Debian.built
+
+# smoothwall
+#
+crumbs/smoothwall.built: crumbs/tc_prep.built
+	@+$(ARCHset) env -i toolcrib/make_toolchain Programs
+	exit 105
+	@touch crumbs/smoothwall.built
+
+smoothwall: crumbs/host.checked crumbs/tc_prep.built crumbs/smoothwall.built
+
 # prepare final build environment
 #
 crumbs/Final.prep.built: crumbs/toolchain.built
@@ -219,26 +238,6 @@ crumbs/Final.built: crumbs/resolv.conf crumbs/Final.prep.built
 
 build: crumbs/host.checked crumbs/Final.built
 
-# build debian
-#
-crumbs/Debian.built:
-	@(tput smso; echo -e "\nDebian Build"; tput rmso) <$(BUILD_IN) >>$(BUILD_OUT) 2>&1
-	env -i toolcrib/make_debs
-	#@touch crumbs/debian.built
-
-debs: crumbs/Debian.built
-
-# smoothwall
-#
-crumbs/smoothwall.built: crumbs/tc_prep.built
-	@+$(ARCHset) env -i toolcrib/make_toolchain Programs
-	#@+$(ARCHset) env -i toolcrib/tc_check 1
-	#@#exit 101
-	#@rm -f dummy.c a.out
-	exit 101
-	@touch crumbs/smoothwall.built
-
-smoothwall: crumbs/host.checked crumbs/smoothwall.built
 
 rebuild:
 	+@for i in clean predownload build; do \
