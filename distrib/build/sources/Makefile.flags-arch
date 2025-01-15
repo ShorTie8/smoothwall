@@ -69,6 +69,7 @@ endif
 
 export mTUPLE = $(mARCH)
 
+
 # See what we can build; that is, see if the chosen mARCH is possible.
 # If building on a multilib host, both will be zero. If building on pure i686
 # CANx86_64 will be non-zero. If building on pure 64-bit, CANi686

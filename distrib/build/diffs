@@ -1,0 +1,19 @@
+
+
+
+rm -v *.diff
+
+diff -ru /root/smoothwall-git/distrib/build/Makefile Makefile > Makefile.diff
+
+diff -ru /root/smoothwall-git/distrib/build/sources/Makefile sources/Makefile > sources-Makefile.diff
+diff -ru /root/smoothwall-git/distrib/build/sources/Makefile.conf sources/Makefile.conf > sources-Makefile.conf.diff
+diff -ru /root/smoothwall-git/distrib/build/sources/Makefile.flags-arch sources/Makefile.flags-arch > sources-Makefile.flags-arch.diff
+diff -ru /root/smoothwall-git/distrib/build/sources/Makefile.kernel sources/Makefile.kernel > sources-Makefile.kernel.diff
+diff -ru /root/smoothwall-git/distrib/build/sources/Makefile.kernel.rpi sources/Makefile.kernel.rpi > sources-Makefile.kernel.rpi.diff
+diff -ru /root/smoothwall-git/distrib/build/sources/Makefile.rules sources/Makefile.rules > sources-Makefile.rules.diff
+diff -ru /root/smoothwall-git/distrib/build/sources/Makefile.versions sources/Makefile.versions > sources-Makefile.versions.diff
+
+diff -ruN /root/smoothwall-git/distrib/build/toolcrib toolcrib > toolcrib.diff
+diff -ruN /root/smoothwall-git/distrib/build/toolcrib/functions toolcrib/functions > functions.diff
+
+

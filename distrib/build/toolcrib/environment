@@ -148,7 +148,7 @@ function set_build_environment() {
       echo "      Build Phase: $BUILD_PHASE; mARCH=$mARCH"
       ;;
 
-   Debian)
+   debs)
       export mARCH = $(shell dpkg-architecture -qDEB_HOST_ARCH)
       export ROOT="/"
     #  export ROOT="$DISTRIB_PATH"

@@ -124,9 +124,12 @@ function buildprog()
     if [ -p crumbs/monpipe ]; then echo "-${BUILD_PHASE/Stage_/} $1" > crumbs/monpipe; fi
     echo "    $displayTIME $1 ($VERSION) "
     echo "clean"
+    env
+    gcc -v
     ( docommand "$1" "make -C sources/$1 clean") > sources/$1/$BUILD_PHASE.out 2>&1
     echo "compile"
-    ( docommand "$1" "make -C sources/$1 compile") > sources/$1/$BUILD_PHASE.out 2>&1
+    make -C sources/$1 compile
+#    ( docommand "$1" "make -C sources/$1 compile") > sources/$1/$BUILD_PHASE.out 2>&1
 #    ( docommand "$1" "make -C sources/$1 clean install") > sources/$1/$BUILD_PHASE.out 2>&1
     status=$?
     if [ -p crumbs/monpipe ]; then echo "Done End" > crumbs/monpipe; fi
@@ -222,6 +225,27 @@ function build_tc_stage_3() {
 }
 
 
+# function build_debs()
+#   Build Debian Packages
+
+function build_debs() {
+  export BUILD_PHASE="debs"
+  set_build_environment
+
+  export JOBS=$JOBS_MP 
+  beginTIME=`date +%s`
+
+  builddeb iptables
+  builddeb ipbatch
+  
+  startTIME=`date +%s`-beginTIME
+  displayTIME=`perl -e "printf('%6d', $startTIME);"`
+  echo "    $displayTIME $BUILD_PHASE build complete"
+  #exit 111
+}
+
+# function build_Programs()
+#   Build the SmoothWall Programs packages
 
 function build_Programs()
 {
@@ -233,13 +257,13 @@ function build_Programs()
   beginTIME=`date +%s`
 
   echo "Building SmoothWall Programs"
-  buildenv httpd
-  buildenv iptables
-  buildenv smoothd
-  buildenv libsmooth+setup
+#  buildprog httpd
+  buildprog iptables
+  buildprog smoothd
+  buildprog libsmooth+setup
   exit 44
-  buildenv ipbatch
-  buildenv libsmooth+setup
+  buildprog ipbatch
+  buildprog libsmooth+setup
   check 2 gcc
   startTIME=`date +%s`-beginTIME
   displayTIME=`perl -e "printf('%6d', $startTIME);"`
@@ -339,7 +363,7 @@ other_cmd()
   if [ -e "$1" ]; then
     echo "    $displayTIME $2 already done"
   else
-    if [ "$BUILD_PHASE" == "Final" ] || [ "$BUILD_PHASE" == "Programs" ]; then
+    if [ "$BUILD_PHASE" == "Final" ]; then
       export PKG_ROOT="$PKG_ROOT_PATH/other"
       echo "    $displayTIME $2: PKG_ROOT:$PKG_ROOT"
     else
